@@ -663,15 +663,15 @@ def data_imputation(config):
     dataset = config.get("dataset", {}).get("name")
     dataset_name = ''
     dataset_path = ''
-    if dataset == "Restaurant":
+    if dataset.lower() == "restaurant":
         dataset_name = RESTAURANT_DATASET_CONSTANTS.VALUE['NAME']
         dataset_path = os.path.join(
             DATA_PATH, RESTAURANT_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    elif dataset == "Buy":
+    elif dataset.lower() == "buy":
         dataset_name = BUY_DATASET_CONSTANTS.VALUE['NAME']
         dataset_path = os.path.join(
             DATA_PATH, BUY_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    elif dataset == "Flipkart":
+    elif dataset.lower() == "flipkart":
         dataset_name = FLIPKART_DATASET_CONSTANTS.VALUE['NAME']
         dataset_path = os.path.join(
             DATA_PATH, FLIPKART_DATASET_CONSTANTS.VALUE['REL_PATH'])
