@@ -1,0 +1,26 @@
+{
+    "task": "Data Imputation",
+    "dataset": {
+        "name": "Restaurant"
+    },
+    "model": "GPT 3.5",
+    "sampling": {
+        "number_of_samples": null
+    },
+    "ner": {
+        "method": null,
+        "number_of_examples": 5,
+        "atomicity_threshold": 0.7,
+        "entity_detection_threshold": 0.5
+    },
+    "dependency_finder": {
+        "method": "Random Forest",
+        "number_of_rules": 3
+    },
+    "apply": {
+        "number_of_rows": 10,
+        "number_of_examples": 3
+    },
+    "result_path": "res.csv",
+    "output_path": "out.txt"
+}
