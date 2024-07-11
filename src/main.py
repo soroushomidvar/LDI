@@ -9,10 +9,10 @@ warnings.filterwarnings("ignore")
 
 # MODELS = ["GPT 3.5"]  # , "GPT 4", "Llama", "Gemini",
 
-BUY_DATASET_PATH = os.path.join(
-    DATA_PATH, BUY_DATASET_CONSTANTS.VALUE['REL_PATH'])
-RESTAURANT_DATASET_PATH = os.path.join(
-    DATA_PATH, RESTAURANT_DATASET_CONSTANTS.VALUE['REL_PATH'])
+# BUY_DATASET_PATH = os.path.join(
+#     DATA_PATH, BUY_DATASET_CONSTANTS.VALUE['REL_PATH'])
+# RESTAURANT_DATASET_PATH = os.path.join(
+#     DATA_PATH, RESTAURANT_DATASET_CONSTANTS.VALUE['REL_PATH'])
 
 
 def DI(config):
