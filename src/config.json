@@ -1,11 +1,11 @@
 {
     "task": "Data Imputation",
     "dataset": {
-        "name": "flipkart"
+        "name": "restaurant"
     },
     "model": "GPT 3.5",
     "sampling": {
-        "number_of_samples": 50
+        "number_of_samples": null
     },
     "ner": {
         "method": null,

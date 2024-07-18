@@ -17,7 +17,16 @@ from constants.paths import *
 import itertools
 from sklearn.model_selection import cross_val_score
 from sklearn.tree import DecisionTreeClassifier
+import matplotlib.pyplot as plt
+from sklearn.tree import plot_tree
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
 import ast
+from gensim.models import Word2Vec
+from sklearn.impute import SimpleImputer
 
 
 def preprocessing(dataset_name, df):
@@ -131,6 +140,26 @@ def example_generator(df, src, trg, examples_number):
     return unique_examples.reset_index(drop=True)
 
 
+def train_word2vec_model(text_data):
+    """Train a Word2Vec model on the given text data."""
+    tokenized_text = [text.split()
+                      for text in text_data]  # Simple tokenization
+    model = Word2Vec(sentences=tokenized_text, vector_size=50,
+                     window=5, min_count=1, workers=4)
+    return model
+
+
+def text_to_vector(text, model):
+    """Convert text to a fixed-size vector using the provided Word2Vec model."""
+    tokens = text.split()  # Simple tokenization
+    vectors = [model.wv[token] for token in tokens if token in model.wv]
+    if len(vectors) == 0:  # Handle case where no tokens are in the model's vocabulary
+        return np.zeros(model.vector_size)
+    # Average the vectors
+    vector = np.mean(vectors, axis=0)
+    return vector
+
+
 def dependency_finder(df_main, target_col):
     df = df_main.copy()
     # Check if the target column is categorical
@@ -140,7 +169,7 @@ def dependency_finder(df_main, target_col):
     # Encode categorical columns, including the target column
     label_encoders = {}
     for column in df.columns:
-        if df[column].dtype == 'object':
+        if df[column].dtype == 'object' and column != target_col:
             le = LabelEncoder()
             df[column] = le.fit_transform(df[column])
             label_encoders[column] = le
@@ -150,8 +179,13 @@ def dependency_finder(df_main, target_col):
     y = df[target_col]
 
     # Initialize and train the RandomForestClassifier
-    model = RandomForestClassifier()
+    model = DecisionTreeClassifier()  # RandomForestClassifier()
     model.fit(X, y)
+
+    # plt.figure(figsize=(20, 10))
+    # plot_tree(model, filled=True, max_depth=5,
+    #           rounded=True, feature_names=df.columns)
+    # plt.show()
 
     # Get feature importances
     importances = pd.Series(model.feature_importances_,
