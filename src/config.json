@@ -18,7 +18,7 @@
         "number_of_rules": 3
     },
     "apply": {
-        "number_of_rows": 20,
+        "number_of_rows": 10,
         "number_of_examples": 3
     },
     "result_path": "res.csv",
