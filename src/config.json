@@ -1,7 +1,7 @@
 {
     "task": "Data Imputation",
     "dataset": {
-        "name": "restaurant"
+        "name": "flipkart"
     },
     "model": "GPT 3.5",
     "sampling": {
