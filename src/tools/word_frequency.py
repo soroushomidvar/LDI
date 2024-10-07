@@ -8,7 +8,7 @@ nltk.download('reuters')
 nltk.download('gutenberg')
 
 
-def word_frequency_in_corpora(word):
+def word_frequency(word):
     # Convert the input word to lowercase
     word_lower = word.lower()
 
