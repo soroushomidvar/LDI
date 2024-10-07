@@ -2,8 +2,9 @@ import pandas as pd
 from collections import defaultdict
 
 
-def common_patterns(strings, p, n):
+def common_patterns(strings, p):
     def generate_substrings(s):
+        s = str(s)
         # Generate all substrings of a given string.
         substrings = set()
         length = len(s)
@@ -56,10 +57,10 @@ def common_patterns(strings, p, n):
     sorted_substrings = sorted(filtered_substrings, key=lambda x: (-len(x), x))
 
     # Return the top n substrings
-    return sorted_substrings[:n]
+    return sorted_substrings
 
 
-def grouped_key_patterns(df, p, n):
+def grouped_key_patterns(df, p):
     grouped = df.groupby(df.columns[1])
     all_substrings = defaultdict(set)
     group_substrings = {}
@@ -67,7 +68,7 @@ def grouped_key_patterns(df, p, n):
     # Collect substrings for each group
     for group, subset in grouped:
         strings = subset[df.columns[0]].tolist()
-        top_substrings = common_patterns(strings, p, n)
+        top_substrings = common_patterns(strings, p)
 
         group_substrings[group] = top_substrings
         for substring in top_substrings:
@@ -88,7 +89,17 @@ def grouped_key_patterns(df, p, n):
         sorted(result.items(), key=lambda x: (-len(x[0]), x[0])))
 
     # Return the top n results
-    return dict(list(sorted_result.items())[:n])
+    return dict(list(sorted_result.items()))
+
+
+def is_dependant(df, p, q):
+    result = grouped_key_patterns(df, p)
+    groups_with_unique_substrings = set(result.values())
+    total_groups = df[df.columns[1]].nunique()
+    required_groups = q * total_groups
+    status = len(groups_with_unique_substrings) >= required_groups
+    degree = len(groups_with_unique_substrings)/total_groups
+    return degree, status
 
 
 # # Example usage
@@ -106,4 +117,5 @@ def grouped_key_patterns(df, p, n):
 # df = pd.DataFrame(data)
 
 # # Output will depend on the data and p, n values
-# print(grouped_key_patterns(df, 0.8, 4))
+# print(grouped_key_patterns(df, 0.8))
+# print(is_dependant(df, 0.8, 0.9))

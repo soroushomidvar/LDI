@@ -4,8 +4,9 @@
         "name": "flipkart"
     },
     "model": "GPT 3.5",
+    "number_of_rules": 5,
     "sampling": {
-        "number_of_samples": null
+        "number_of_samples": 80
     },
     "ner": {
         "method": null,
@@ -14,8 +15,9 @@
         "entity_detection_threshold": 0.5
     },
     "dependency_finder": {
-        "method": "Random Forest",
-        "number_of_rules": 3
+        "method": "LCS",
+        "inner_threshold": 0.9,
+        "outer_threshold": 0.9
     },
     "apply": {
         "number_of_rows": 10,

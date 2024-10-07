@@ -3,6 +3,7 @@ from tools.serializer import *
 from tools.data_handler import *
 from tools.entity_recognition import *
 from tools.sketch_generator import *
+from tools.dependency_finder import *
 import json
 import pandas as pd
 import os
@@ -160,41 +161,45 @@ def text_to_vector(text, model):
     return vector
 
 
-def dependency_finder(df_main, target_col):
+def dependency_finder(method, df_main, target_col, p, q):
     df = df_main.copy()
     # Check if the target column is categorical
     if df[target_col].dtype != 'object':
         raise ValueError("The target column must be categorical.")
 
     # Encode categorical columns, including the target column
-    label_encoders = {}
+    rels = {}
     for column in df.columns:
-        if df[column].dtype == 'object' and column != target_col:
-            le = LabelEncoder()
-            df[column] = le.fit_transform(df[column])
-            label_encoders[column] = le
+        if column != target_col:  # df[column].dtype == 'object' and
+            deg, rel = is_dependant(df[[column, target_col]], p, q)
+            if (rel):
+                rels[column] = deg
+                print(str(column) + ": " + str(rel))
+            # le = LabelEncoder()
+            # df[column] = le.fit_transform(df[column])
+            # label_encoders[column] = le
 
-    # Separate features and target
-    X = df.drop(columns=[target_col])
-    y = df[target_col]
+    # # Separate features and target
+    # X = df.drop(columns=[target_col])
+    # y = df[target_col]
 
-    # Initialize and train the RandomForestClassifier
-    model = DecisionTreeClassifier()  # RandomForestClassifier()
-    model.fit(X, y)
+    # # Initialize and train the RandomForestClassifier
+    # model = DecisionTreeClassifier()  # RandomForestClassifier()
+    # model.fit(X, y)
 
-    # plt.figure(figsize=(20, 10))
-    # plot_tree(model, filled=True, max_depth=5,
-    #           rounded=True, feature_names=df.columns)
-    # plt.show()
+    # # plt.figure(figsize=(20, 10))
+    # # plot_tree(model, filled=True, max_depth=5,
+    # #           rounded=True, feature_names=df.columns)
+    # # plt.show()
 
-    # Get feature importances
-    importances = pd.Series(model.feature_importances_,
-                            index=X.columns).sort_values(ascending=False)
+    # # Get feature importances
+    # importances = pd.Series(model.feature_importances_,
+    #                         index=X.columns).sort_values(ascending=False)
 
-    # Convert the importances to a dictionary
-    feature_importance_dict = importances.to_dict()
+    # # Convert the importances to a dictionary
+    # feature_importance_dict = importances.to_dict()
 
-    return feature_importance_dict
+    return rels  # feature_importance_dict
 
 
 def dependency_finder_combinations_random_forest(df_main, target_col):
@@ -335,7 +340,7 @@ def rules_to_str(lst, key):
     return ''.join(result)
 
 
-def rule_generator(dataset_name, df, key, number_of_examples=3, number_of_rules=3):
+def rule_generator(dataset_name, df, key, method, p, q,  number_of_examples=3, number_of_rules=3):
     rule = None
     # key, rest, df = preprocessing(dataset_name, df)
 
@@ -346,7 +351,7 @@ def rule_generator(dataset_name, df, key, number_of_examples=3, number_of_rules=
     # print("\nDataset Sketch:")
     # print(df_sketch)
 
-    dependency_values = dependency_finder(df, key.columns[0])
+    dependency_values = dependency_finder(method, df, key.columns[0], p, q)
     # combination_importance_DT = dependency_finder_combinations_decision_tree(
     #     df, key.columns[0])
     # print("Combination Importance (DT):", combination_importance_DT)
@@ -748,11 +753,16 @@ def data_imputation(config):
         df = entity_extractor(
             df, atomicity_status, ner_number_of_examples, entity_detection_threshold)
 
-        number_of_rules = config.get(
-            "dependency_finder", {}).get("number_of_rules", 3)
+        trg = key.columns[0]
+
+        number_of_rules = config.get("number_of_rules", 3)
+        method = config.get("dependency_finder", {}).get("method")
+        p = config.get("dependency_finder", {}).get("inner_threshold")
+        q = config.get("dependency_finder", {}).get("outer_threshold")
+
         # train:
         src_list, _, _, rules_str, _, _ = rule_generator(
-            dataset_name, df, key, ner_number_of_examples, number_of_rules)
+            dataset_name, df, key, method, p, q, ner_number_of_examples, number_of_rules)
 
         # test:
 
@@ -762,8 +772,6 @@ def data_imputation(config):
         samples = sampling(df, apply_rows)
 
         # print(samples)
-
-        trg = key.columns[0]
 
         rules = [src + " -> " + trg for src in src_list]
 
