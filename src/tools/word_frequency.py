@@ -40,9 +40,9 @@ def word_frequency(word):
 
 
 # Example usage
-word_to_search = 'test'
-frequencies = word_frequency_in_corpora(word_to_search)
+# word_to_search = 'Iran'
+# frequencies = word_frequency(word_to_search)
 
-# Print the frequencies
-for corpus, freq in frequencies.items():
-    print(f"The word '{word_to_search}' appears {freq} times in {corpus}.")
+# # Print the frequencies
+# for corpus, freq in frequencies.items():
+#     print(f"The word '{word_to_search}' appears {freq} times in {corpus}.")
