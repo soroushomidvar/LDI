@@ -1,15 +1,16 @@
 {
     "task": "Data Imputation",
     "dataset": {
-        "name": "flipkart"
+        "name": "flipkart",
+        "target_column": "brand"
     },
     "model": "GPT 3.5",
     "number_of_rules": 3,
     "sampling": {
         "method": "Group Sampling",
-        "number_of_samples": 80,
-        "m": 3,
-        "n": 5
+        "number_of_samples": 50,
+        "m": 2,
+        "n": 20
     },
     "ner": {
         "method": null,
@@ -19,8 +20,8 @@
     },
     "dependency_finder": {
         "method": "LCS",
-        "inner_threshold": 0.7,
-        "outer_threshold": 0.7
+        "inner_threshold": 0.9,
+        "outer_threshold": 0.9
     },
     "apply": {
         "number_of_rows": 10,
