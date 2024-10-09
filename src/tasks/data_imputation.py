@@ -172,9 +172,9 @@ def dependency_finder(method, df_main, target_col, p, q):
     for column in df.columns:
         if column != target_col:  # df[column].dtype == 'object' and
             deg, rel = is_dependant(df[[column, target_col]], p, q)
-            if (rel):
-                rels[column] = deg
-                print(str(column) + ": " + str(rel))
+            # if (rel):
+            rels[column] = deg
+            print(str(column) + ": " + str(rel))
             # le = LabelEncoder()
             # df[column] = le.fit_transform(df[column])
             # label_encoders[column] = le
@@ -340,7 +340,7 @@ def rules_to_str(lst, key):
     return ''.join(result)
 
 
-def rule_generator(dataset_name, df, key, method, p, q,  number_of_examples=3, number_of_rules=3):
+def rule_generator(dataset_name, df, trg, method, p, q,  number_of_examples=3, number_of_rules=3):
     rule = None
     # key, rest, df = preprocessing(dataset_name, df)
 
@@ -351,7 +351,7 @@ def rule_generator(dataset_name, df, key, method, p, q,  number_of_examples=3, n
     # print("\nDataset Sketch:")
     # print(df_sketch)
 
-    dependency_values = dependency_finder(method, df, key.columns[0], p, q)
+    dependency_values = dependency_finder(method, df, trg, p, q)
     # combination_importance_DT = dependency_finder_combinations_decision_tree(
     #     df, key.columns[0])
     # print("Combination Importance (DT):", combination_importance_DT)
@@ -371,7 +371,7 @@ def rule_generator(dataset_name, df, key, method, p, q,  number_of_examples=3, n
     # dependant_columns_details = assign_probabilities_to_sketch(
     #     df_sketch, dependency_values)
 
-    left_hand_columns_str = rules_to_str(left_hand_columns, key.columns[0])
+    left_hand_columns_str = rules_to_str(left_hand_columns, trg)
     # str(left_hand_columns) + " -> " + key.columns[0]
 
     print("\nRule(s):")
@@ -404,9 +404,9 @@ def rule_generator(dataset_name, df, key, method, p, q,  number_of_examples=3, n
     return left_hand_columns, None, None, left_hand_columns_str, None, None
 
 
-def fill_keys(samples, keys, key_response_pairs):
+def fill_keys(df, samples, trg, key_response_pairs):
     for sample in samples:
-        key = keys.iat[sample, 0]
+        key = df.iloc[sample][trg]
         key_response_pair = pd.DataFrame({'id': sample, 'key': [key]})
         key_response_pairs = pd.concat(
             [key_response_pairs, key_response_pair], ignore_index=True)
@@ -697,11 +697,36 @@ def run_models(model, df, key_response_pairs, rule, samples, examples):
     return key_response_pairs
 
 
+def group_sampling(df, trg, m, n):
+    # Group the dataframe by the target column
+    grouped = df.groupby(trg)
+
+    # Get groups that have at least n rows
+    eligible_groups = [name for name, group in grouped if len(group) >= n]
+
+    # Check if we have enough groups to sample from
+    if len(eligible_groups) < m:
+        raise ValueError(
+            f"Not enough groups with at least {n} rows. Only found {len(eligible_groups)} such groups.")
+
+    # Randomly sample m groups
+    sampled_groups = pd.Series(eligible_groups).sample(m).tolist()
+
+    # Initialize an empty list to hold the samples
+    samples = []
+
+    # For each sampled group, randomly select n rows
+    for group_name in sampled_groups:
+        group_sample = grouped.get_group(group_name).sample(n)
+        samples.append(group_sample)
+
+    # Concatenate all the sampled groups to form the final dataframe
+    return pd.concat(samples).reset_index(drop=True)
+
+
 # def data_imputation(dataset_name='', path='', models=[], number_of_rows=100, number_of_examples=3, sample_size=None, few_shot_sampling_method='random', shot_number=3, annotation='GPT 3.5'):
 def data_imputation(config):
     dataset = config.get("dataset", {}).get("name")
-    dataset_name = ''
-    dataset_path = ''
     if dataset.lower() == "restaurant":
         dataset_name = RESTAURANT_DATASET_CONSTANTS.VALUE['NAME']
         dataset_path = os.path.join(
@@ -721,39 +746,46 @@ def data_imputation(config):
     df = read_csv(dataset_path)
 
     if df is not None:
-        # Sampling for test
 
         # drop NaNs
         df = df.dropna()
 
-        df_sample_number = config.get("sampling", {}).get(
-            "number_of_samples")  # , len(df)
-        if df_sample_number is not None:
-            df = df.sample(n=df_sample_number)
+        trg = config.get("dataset", {}).get("target_column")
 
-        key, _, df = preprocessing(dataset_name, df)
-        print("# Samples: " + str(len(df)) + "\n")
+        sample_method = config.get("sampling", {}).get("method")
+        sample_number = config.get("sampling", {}).get("number_of_samples")
+        sample_m = config.get("sampling", {}).get("m")
+        sample_n = config.get("sampling", {}).get("n")
+
+        if sample_method is not None:
+            if sample_method == "Random Sampling":
+                sampled_df = df.sample(n=sample_number)
+            elif sample_method == "Group Sampling":
+                sampled_df = group_sampling(df, trg, sample_m, sample_n)
+
+        _, _, df = preprocessing(dataset_name, df)
+
+        print("Sampling Method: " + str(sample_method) +
+              " # Samples: " + str(len(sampled_df)) + "\n")
+        print("Sampled Labels: " + str(sampled_df[trg].tolist()))
 
         # Which column(s) are atomic?
-        print("Columns Atomicity check:")
-
         ner_method = config.get("ner", {}).get("method")
         ner_number_of_examples = config.get(
             "ner", {}).get("number_of_examples")
         ner_atomicity_threshold = config.get(
             "ner", {}).get("atomicity_threshold")
         atomicity_status = is_atomic(
-            df, ner_method, ner_number_of_examples, ner_atomicity_threshold)
+            sampled_df, ner_method, ner_number_of_examples, ner_atomicity_threshold)
 
+        print("NER Method: " + str(ner_method))
         print("Columns Atomicity Status: " + str(atomicity_status) + "\n")
 
         # entity detection
         entity_detection_threshold = config.get(
             "ner", {}).get("entity_detection_threshold")
-        df = entity_extractor(
-            df, atomicity_status, ner_number_of_examples, entity_detection_threshold)
-
-        trg = key.columns[0]
+        sampled_df = entity_extractor(
+            sampled_df, atomicity_status, ner_number_of_examples, entity_detection_threshold)
 
         number_of_rules = config.get("number_of_rules", 3)
         method = config.get("dependency_finder", {}).get("method")
@@ -762,14 +794,14 @@ def data_imputation(config):
 
         # train:
         src_list, _, _, rules_str, _, _ = rule_generator(
-            dataset_name, df, key, method, p, q, ner_number_of_examples, number_of_rules)
+            dataset_name, sampled_df, trg, method, p, q, ner_number_of_examples, number_of_rules)
 
         # test:
 
         apply_examples = config.get("apply", {}).get("number_of_examples")
         apply_rows = config.get("apply", {}).get("number_of_rows")
         # samples are used for the test phase
-        samples = sampling(df, apply_rows)
+        samples = sampling(sampled_df, apply_rows)
 
         # print(samples)
 
@@ -778,7 +810,8 @@ def data_imputation(config):
         key_response_pairs = pd.DataFrame(
             columns=['id', 'key'] + rules)  # + model_output_names)
 
-        key_response_pairs = fill_keys(samples, key, key_response_pairs)
+        # key_response_pairs = fill_keys(samples, df[trg], key_response_pairs)
+        key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
 
         for src in src_list:
 
