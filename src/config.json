@@ -1,16 +1,16 @@
 {
     "task": "Data Imputation",
     "dataset": {
-        "name": "flipkart",
-        "target_column": "brand"
+        "name": "zomato",
+        "target_column": "location"
     },
     "model": "GPT 3.5",
     "number_of_rules": 3,
     "sampling": {
         "method": "Group Sampling",
         "number_of_samples": 50,
-        "m": 2,
-        "n": 20
+        "m": 10,
+        "n": 5
     },
     "ner": {
         "method": null,
