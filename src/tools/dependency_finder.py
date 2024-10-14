@@ -1,5 +1,6 @@
 import pandas as pd
 from collections import defaultdict
+from tools.word_frequency import *
 
 
 def common_patterns(strings, p):
@@ -76,11 +77,33 @@ def grouped_key_patterns(df, p):
 
     result = {}
 
+    # # Filter substrings to include only those unique to one group
+    # for group, substrings in group_substrings.items():
+    #     unique_substrings = [substring for substring in substrings if len(
+    #         all_substrings[substring]) == 1]
+
+    #     for substring in unique_substrings:
+    #         result[substring] = group
+
     # Filter substrings to include only those unique to one group
     for group, substrings in group_substrings.items():
-        unique_substrings = [substring for substring in substrings if len(
-            all_substrings[substring]) == 1]
+        unique_substrings = []
 
+        # Check if a substring is a part of a longer substring in other groups
+        for substring in substrings:
+            is_unique = True
+            for other_substring in all_substrings:
+                if substring != other_substring and substring in other_substring:
+                    # If the substring is part of a longer substring in another group, it's not unique
+                    if group not in all_substrings[other_substring]:
+                        is_unique = False
+                        break
+
+            # Only keep substring if it's unique
+            if is_unique and len(all_substrings[substring]) == 1:
+                unique_substrings.append(substring)
+
+        # Add unique substrings to result
         for substring in unique_substrings:
             result[substring] = group
 
@@ -94,12 +117,14 @@ def grouped_key_patterns(df, p):
 
 def is_dependant(df, p, q):
     result = grouped_key_patterns(df, p)
+    # TODO
     groups_with_unique_substrings = set(result.values())
     total_groups = df[df.columns[1]].nunique()
     required_groups = q * total_groups
     status = len(groups_with_unique_substrings) >= required_groups
-    degree = len(groups_with_unique_substrings)/total_groups
-    return degree, status
+    # degree = len(groups_with_unique_substrings)/total_groups
+    degree = word_frequency(list(result.keys()))
+    return status, degree, result
 
 
 # # Example usage
