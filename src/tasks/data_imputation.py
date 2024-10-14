@@ -47,6 +47,11 @@ def preprocessing(dataset_name, df):
         key = df[FLIPKART_DATASET_CONSTANTS.VALUE['KEY']]
         rest = df[FLIPKART_DATASET_CONSTANTS.VALUE['REST']]
 
+    elif dataset_name == ZOMATO_DATASET_CONSTANTS.VALUE['NAME']:
+        df = df[ZOMATO_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
+        key = df[ZOMATO_DATASET_CONSTANTS.VALUE['KEY']]
+        rest = df[ZOMATO_DATASET_CONSTANTS.VALUE['REST']]
+
     return key, rest, df
 
 
@@ -162,44 +167,23 @@ def text_to_vector(text, model):
 
 
 def dependency_finder(method, df_main, target_col, p, q):
-    df = df_main.copy()
-    # Check if the target column is categorical
-    if df[target_col].dtype != 'object':
-        raise ValueError("The target column must be categorical.")
+    if method == "LCS":
+        df = df_main.copy()
+        # Check if the target column is categorical
+        if df[target_col].dtype != 'object':
+            raise ValueError("The target column must be categorical.")
 
-    # Encode categorical columns, including the target column
-    rels = {}
-    for column in df.columns:
-        if column != target_col:  # df[column].dtype == 'object' and
-            deg, rel = is_dependant(df[[column, target_col]], p, q)
-            # if (rel):
-            rels[column] = deg
-            print(str(column) + ": " + str(rel))
-            # le = LabelEncoder()
-            # df[column] = le.fit_transform(df[column])
-            # label_encoders[column] = le
+        # Encode categorical columns, including the target column
+        rels = {}
+        for column in df.columns:
+            if column != target_col:  # df[column].dtype == 'object' and
+                rel, deg, res = is_dependant(df[[column, target_col]], p, q)
+                if (rel):
+                    rels[column] = deg
+                    print("\n" + str(column) + ": " + "\nStatus: " + str(rel) +
+                          "\nDegree: " + str(deg) + "\nLCSs: " + str(res))
 
-    # # Separate features and target
-    # X = df.drop(columns=[target_col])
-    # y = df[target_col]
-
-    # # Initialize and train the RandomForestClassifier
-    # model = DecisionTreeClassifier()  # RandomForestClassifier()
-    # model.fit(X, y)
-
-    # # plt.figure(figsize=(20, 10))
-    # # plot_tree(model, filled=True, max_depth=5,
-    # #           rounded=True, feature_names=df.columns)
-    # # plt.show()
-
-    # # Get feature importances
-    # importances = pd.Series(model.feature_importances_,
-    #                         index=X.columns).sort_values(ascending=False)
-
-    # # Convert the importances to a dictionary
-    # feature_importance_dict = importances.to_dict()
-
-    return rels  # feature_importance_dict
+        return rels  # feature_importance_dict
 
 
 def dependency_finder_combinations_random_forest(df_main, target_col):
@@ -342,65 +326,20 @@ def rules_to_str(lst, key):
 
 def rule_generator(dataset_name, df, trg, method, p, q,  number_of_examples=3, number_of_rules=3):
     rule = None
-    # key, rest, df = preprocessing(dataset_name, df)
-
-    # key_sketch = get_sketch(key, number_of_examples)
-    # rest_sketch = get_sketch(rest, number_of_examples)
-    # df_sketch = get_sketch(df, number_of_examples)
-
-    # print("\nDataset Sketch:")
-    # print(df_sketch)
 
     dependency_values = dependency_finder(method, df, trg, p, q)
-    # combination_importance_DT = dependency_finder_combinations_decision_tree(
-    #     df, key.columns[0])
-    # print("Combination Importance (DT):", combination_importance_DT)
-
-    # combination_importance_RF = dependency_finder_combinations_random_forest(
-    #     df, key.columns[0])
-    # print("Combination Importance (RF):", combination_importance_RF)
 
     print("\nColumn Dependencies (Importance):")
     print(dependency_values)
 
+    # TODO: get_top_n_features -> word frequency
     left_hand_columns = get_top_n_features(dependency_values, number_of_rules)
 
-    # dependant_column_details, dependant_column = assign_probabilities_to_sketch_minimal(
-    #     df.columns.tolist(), dependency_values)
-
-    # dependant_columns_details = assign_probabilities_to_sketch(
-    #     df_sketch, dependency_values)
-
     left_hand_columns_str = rules_to_str(left_hand_columns, trg)
-    # str(left_hand_columns) + " -> " + key.columns[0]
 
     print("\nRule(s):")
     print(left_hand_columns_str)
 
-    # dependant_column_details_str = str(
-    #     dependant_column_details)+" -> "+key.columns[0]
-    # print("\nRule with Details:")
-    # print(dependant_column_details_str)
-
-    # dependant_columns_details_str = str(
-    #     dependant_columns_details)+" -> "+key.columns[0]
-    # print("\nRule with more Details")
-    # print(dependant_columns_details_str)
-
-    # for example in examples:
-
-    #     serialized_example_rest = serialize_rows(rest, example)
-    #     serialized_example_key = serialize_rows(key, example)
-
-    # entities_rest = named_entity_recognizer(
-    #     serialized_example_rest, "GPT 3.5")
-    # entities_keys = named_entity_recognizer(
-    #     serialized_example_key, "GPT 3.5")
-
-    # print(entities_rest)
-    # print(entities_keys)
-
-    # return dependant_column, dependant_column_details, dependant_columns_details, dependant_column_str, dependant_column_details_str, dependant_columns_details_str
     return left_hand_columns, None, None, left_hand_columns_str, None, None
 
 
@@ -739,6 +678,10 @@ def data_imputation(config):
         dataset_name = FLIPKART_DATASET_CONSTANTS.VALUE['NAME']
         dataset_path = os.path.join(
             DATA_PATH, FLIPKART_DATASET_CONSTANTS.VALUE['REL_PATH'])
+    elif dataset.lower() == "zomato":
+        dataset_name = ZOMATO_DATASET_CONSTANTS.VALUE['NAME']
+        dataset_path = os.path.join(
+            DATA_PATH, ZOMATO_DATASET_CONSTANTS.VALUE['REL_PATH'])
 
     model = config.get("model")
     # model_output_names = [item + " rule" for item in models]
