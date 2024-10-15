@@ -1,6 +1,6 @@
-from models.Gemini import *
+#from models.Gemini import *
+# from models.Llama import *
 from models.GPT import *
-from models.Llama import *
 import time
 import pandas as pd
 
@@ -13,10 +13,10 @@ def prompt_runner(model, prompt):
     # for model in models:
     # start_time = time.time()
     # print("Model: " + model)
-    if model == "Llama":
-        response = llama(prompt)
-    if model == "Gemini":
-        response = gemini(prompt)
+    # if model == "Llama":
+    #     response = llama(prompt)
+    # if model == "Gemini":
+    #     response = gemini(prompt)
     if model == "GPT 3.5":
         response = gpt3(prompt)
     if model == "GPT 4":
