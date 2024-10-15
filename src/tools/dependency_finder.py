@@ -123,8 +123,8 @@ def is_dependant(df, p, q):
     required_groups = q * total_groups
     status = len(groups_with_unique_substrings) >= required_groups
     # degree = len(groups_with_unique_substrings)/total_groups
-    degree = word_frequency(list(result.keys()))
-    return status, degree, result
+    frequency = word_frequency(list(result.keys()))
+    return status, frequency, result
 
 
 # # Example usage
