@@ -3,9 +3,9 @@ import nltk
 from collections import Counter
 
 # Download the necessary corpora
-nltk.download('brown')
-nltk.download('reuters')
-nltk.download('gutenberg')
+# nltk.download('brown')
+# nltk.download('reuters')
+# nltk.download('gutenberg')
 
 
 def word_frequency(words):
