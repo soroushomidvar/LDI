@@ -1,8 +1,8 @@
 {
     "task": "Data Imputation",
     "dataset": {
-        "name": "zomato",
-        "target_column": "location"
+        "name": "restaurant",
+        "target_column": "city"
     },
     "model": "GPT 3.5",
     "number_of_rules": 3,
@@ -20,8 +20,8 @@
     },
     "dependency_finder": {
         "method": "LCS",
-        "inner_threshold": 0.9,
-        "outer_threshold": 0.9
+        "inner_threshold": 0.7,
+        "outer_threshold": 0.7
     },
     "apply": {
         "number_of_rows": 10,
