@@ -26,7 +26,6 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 import ast
-from gensim.models import Word2Vec
 from sklearn.impute import SimpleImputer
 
 
@@ -146,13 +145,13 @@ def example_generator(df, src, trg, examples_number):
     return unique_examples.reset_index(drop=True)
 
 
-def train_word2vec_model(text_data):
-    """Train a Word2Vec model on the given text data."""
-    tokenized_text = [text.split()
-                      for text in text_data]  # Simple tokenization
-    model = Word2Vec(sentences=tokenized_text, vector_size=50,
-                     window=5, min_count=1, workers=4)
-    return model
+# def train_word2vec_model(text_data):
+#     """Train a Word2Vec model on the given text data."""
+#     tokenized_text = [text.split()
+#                       for text in text_data]  # Simple tokenization
+#     model = Word2Vec(sentences=tokenized_text, vector_size=50,
+#                      window=5, min_count=1, workers=4)
+#     return model
 
 
 def text_to_vector(text, model):
@@ -177,11 +176,11 @@ def dependency_finder(method, df_main, target_col, p, q):
         rels = {}
         for column in df.columns:
             if column != target_col:  # df[column].dtype == 'object' and
-                rel, deg, res = is_dependant(df[[column, target_col]], p, q)
+                rel, freq, res = is_dependant(df[[column, target_col]], p, q)
                 if (rel):
-                    rels[column] = deg
+                    rels[column] = freq
                     print("\n" + str(column) + ": " + "\nStatus: " + str(rel) +
-                          "\nDegree: " + str(deg) + "\nLCSs: " + str(res))
+                          "\nFrequency: " + str(freq) + "\nLCSs: " + str(res))
 
         return rels  # feature_importance_dict
 
