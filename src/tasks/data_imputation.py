@@ -708,7 +708,7 @@ def data_imputation(config):
         _, _, df = preprocessing(dataset_name, df)
 
         print("Sampling Method: " + str(sample_method) +
-              " # Samples: " + str(len(sampled_df)) + "\n")
+              " # Samples: " + str(len(sampled_df)))
         print("Sampled Labels: " + str(sampled_df[trg].tolist()))
 
         # Which column(s) are atomic?
@@ -720,8 +720,8 @@ def data_imputation(config):
         atomicity_status = is_atomic(
             sampled_df, ner_method, ner_number_of_examples, ner_atomicity_threshold)
 
-        print("NER Method: " + str(ner_method))
-        print("Columns Atomicity Status: " + str(atomicity_status) + "\n")
+        print("\nNER Method: " + str(ner_method))
+        if ner_method is not None: print("Columns Atomicity Status: " + str(atomicity_status) + "\n")
 
         # entity detection
         entity_detection_threshold = config.get(
@@ -764,7 +764,7 @@ def data_imputation(config):
                 df, src, trg, apply_examples)
 
             print("Selected Dataframe: ")
-            print(apply_examples_df.head(5))
+            print(apply_examples_df.head(10))
 
             key_response_pairs = run_models(
                 model, df, key_response_pairs, rule, samples, apply_examples_df)
