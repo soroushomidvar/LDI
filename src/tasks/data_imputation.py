@@ -118,13 +118,14 @@ def sampling(df, sample_size):
     return samples
 
 
-def example_generator(df, src, trg, examples_number):
+def example_generator(method, df, src, trg, examples_number):
     if examples_number > df[trg].nunique():
         raise ValueError(
             "The number of unique examples requested exceeds the number of unique values in the trg column.")
 
     # Initialize an empty DataFrame to store the unique examples
-    unique_examples = pd.DataFrame(columns=[src, trg])
+    #unique_examples = pd.DataFrame(columns=[src, trg])
+    unique_examples = pd.DataFrame(columns=df.columns if method == 'ALL' else [src, trg])
 
     # Create a list of already selected trg values
     selected_trg_values = set()
@@ -139,8 +140,12 @@ def example_generator(df, src, trg, examples_number):
         # If the trg value has not been selected before, add the row to unique_examples
         if trg_value not in selected_trg_values:
             selected_trg_values.add(trg_value)
-            selected_row = df.loc[[random_index], [src, trg]]
+            if method == 'LCS':
+                selected_row = df.loc[[random_index], [src, trg]]
+            elif method == 'ALL':
+                selected_row = df.loc[[random_index], :] 
             unique_examples = pd.concat([unique_examples, selected_row])
+
 
     return unique_examples.reset_index(drop=True)
 
@@ -166,14 +171,16 @@ def text_to_vector(text, model):
 
 
 def dependency_finder(method, df_main, target_col, p, q):
+    
+    df = df_main.copy()
+    rels = {}
+
     if method == "LCS":
-        df = df_main.copy()
         # Check if the target column is categorical
         if df[target_col].dtype != 'object':
             raise ValueError("The target column must be categorical.")
 
         # Encode categorical columns, including the target column
-        rels = {}
         for column in df.columns:
             if column != target_col:  # df[column].dtype == 'object' and
                 rel, freq, res = is_dependant(df[[column, target_col]], p, q)
@@ -181,8 +188,13 @@ def dependency_finder(method, df_main, target_col, p, q):
                     rels[column] = freq
                     print("\n" + str(column) + ": " + "\nStatus: " + str(rel) +
                           "\nFrequency: " + str(freq) + "\nLCSs: " + str(res))
-
-        return rels  # feature_importance_dict
+                else:
+                    print("\n" + str(column) + ": " + "\nStatus: " + str(rel) +
+                          "\nFrequency: " + str(freq))
+    elif method == None: 
+        for column in df.columns:
+            rels[column] = -1
+    return rels  # feature_importance_dict
 
 
 def dependency_finder_combinations_random_forest(df_main, target_col):
@@ -323,15 +335,13 @@ def rules_to_str(lst, key):
     return ''.join(result)
 
 
-def rule_generator(dataset_name, df, trg, method, p, q,  number_of_examples=3, number_of_rules=3):
-    rule = None
+def rule_generator(dataset_name, df, trg, method, p, q, number_of_rules=3):
 
     dependency_values = dependency_finder(method, df, trg, p, q)
 
     print("\nColumn Dependencies (Importance):")
-    print(dependency_values)
+    print(list(dependency_values.keys()))
 
-    # TODO: get_top_n_features -> word frequency
     left_hand_columns = get_top_n_features(dependency_values, number_of_rules)
 
     left_hand_columns_str = rules_to_str(left_hand_columns, trg)
@@ -339,7 +349,7 @@ def rule_generator(dataset_name, df, trg, method, p, q,  number_of_examples=3, n
     print("\nRule(s):")
     print(left_hand_columns_str)
 
-    return left_hand_columns, None, None, left_hand_columns_str, None, None
+    return left_hand_columns
 
 
 def fill_keys(df, samples, trg, key_response_pairs):
@@ -544,91 +554,37 @@ def entity_extractor(df, atomic_status, sample_size, threshold):
 #     return pd.DataFrame(new_columns)
 
 
-def mpping_handler(rule, model, examples, sample):
+def mpping_handler(method, rule, model, examples, sample):
+
+    source_columns = examples.columns[:-1]  # All columns except the last one
+    target_column = examples.columns[-1] 
+    src_names_str = ', '.join(source_columns)
+    rule = src_names_str + ' -> ' + target_column
 
     initial_prompt = MAPPING_HANDLER_PROMPTS.VALUE['MAPPING_HANDLER_INITIAL']
     initial_prompt = initial_prompt.replace(
-        '<src>', examples.columns[0]).replace('<trg>', examples.columns[1]).replace('<rule>', rule)
+        '<src>', src_names_str).replace('<trg>', target_column).replace('<rule>', rule)
     serialized_examples = serialize_rows(examples)
 
-    src_name = examples.columns[0]
-    sample_src = sample[[src_name]]
+    # src_name = examples.columns[0]
+    # sample_src = sample[[src_name]]
+    sample_src = sample[source_columns]
     serialized_target_row = serialize_rows(sample_src)
-
-    fixed_prompt = MAPPING_HANDLER_PROMPTS.VALUE['MAPPING_HANDLER_FIXED_QUERRY']
-    fixed_prompt = fixed_prompt.replace('<trg>', examples.columns[1])
-    prompt = initial_prompt + serialized_examples + ' ' + \
-        serialized_target_row + fixed_prompt
+    
+    middle_prompt = MAPPING_HANDLER_PROMPTS.VALUE['MAPPING_HANDLER_MIDDLE'].replace('<trg>', target_column)
+    fixed_prompt = MAPPING_HANDLER_PROMPTS.VALUE['MAPPING_HANDLER_QUERRY'].replace('<trg>', target_column)
+    prompt = initial_prompt + serialized_examples + middle_prompt + serialized_target_row + fixed_prompt
     response = prompt_runner(model, prompt)
     print('prompt: ' + prompt)
-    # print('response : '+str(response))
     print(f"response ({model}): {response}")
     return response
 
 
-def run_models(model, df, key_response_pairs, rule, samples, examples):
-
-    # def detect_value_from_response(r):
-    #     if r is not None:
-    #         parts = r.split('->')
-    #         if len(parts) >= 2:
-    #             return parts[1]
-    #     return None
-
-    # def label_corrector(input_str, string_list, method='jaccard'):
-
-    #     def jaccard_similarity(str1, str2):
-    #         set1 = set(str1)
-    #         set2 = set(str2)
-    #         intersection = len(set1.intersection(set2))
-    #         union = len(set1.union(set2))
-    #         return intersection / union if union != 0 else 0
-
-    #     if method == 'cosine':
-    #         # Vectorize the input string and the string list
-    #         vectorizer = CountVectorizer().fit_transform(
-    #             [input_str] + string_list)
-    #         vectors = vectorizer.toarray()
-
-    #         # Calculate cosine similarity between input string and each string in the list
-    #         similarities = cosine_similarity(vectors)[0][1:]
-
-    #         # Get the index of the most similar string
-    #         most_similar_index = similarities.argmax()
-
-    #         # Return the most similar string
-    #         return string_list[most_similar_index]
-    #     elif method == 'jaccard':
-    #         # Calculate Jaccard similarity between input string and each string in the list
-    #         similarities = [(jaccard_similarity(input_str, s), s)
-    #                         for s in string_list]
-
-    #         # Sort by Jaccard similarity in descending order
-    #         similarities.sort(reverse=True)
-
-    #         # Return the most similar string
-    #         return similarities[0][1]
-
-    # def corerct_label_in_response(r, labels):
-    #     if r is not None:
-    #         parts = r.split('->')
-    #         if len(parts) >= 2:
-    #             label = label_corrector(parts[1], labels)
-    #             return parts[0]+'->'+label
-    #     return None
+def run_models(method, model, df, key_response_pairs, rule, samples, examples):
 
     for sample in samples:
-        # for model in models:
-        # prompt, serialized_target_row, named_entities = rule_generator(
-        #     dataset_name, rest, df, shot_number, few_shot_sampling_method, sample, annotation)
-        # print(prompt)
         value = mpping_handler(
-            rule, model, examples, get_sample_by_row_number(df, sample))
-        # rule = prompt_runner(model, prompt)
-        # print(value)
-        # response = corerct_label_in_response(response, labels)
-        # key_response_pairs.loc[key_response_pairs['id']
-        #                        == sample, model_output_names] = rule
+            method, rule, model, examples, get_sample_by_row_number(df, sample))
         key_response_pairs.loc[key_response_pairs['id']
                                == sample, rule] = value  # detect_value_from_response(rule)
 
@@ -662,6 +618,39 @@ def group_sampling(df, trg, m, n):
     return pd.concat(samples).reset_index(drop=True)
 
 
+def dependency_level_to_categorical(dependency_level, dataset_name):
+    def get_level(value):
+        if value is None:
+            return "unknown"
+        elif value > 0.66:
+            return "high"
+        elif value >= 0.33:
+            return "med"
+        else:
+            return "low"
+
+    if dataset_name not in dependency_level:
+        return f"Dataset '{dataset_name}' not found."
+    
+    dataset = dependency_level[dataset_name]
+    categorized_items = [(key, get_level(value)) for key, value in dataset.items()]
+
+    # Sort: high first, then med, then low, and finally unknown
+    sorted_items = sorted(categorized_items, key=lambda x: ("high med low unknown".split().index(x[1])))
+
+    # Format the result as requested
+    return {key: level for key, level in sorted_items}
+
+
+def drop_long_columns(df, length_limit):
+    # Calculate the average length of each column
+    avg_lengths = df.apply(lambda col: col.astype(str).str.len().mean()).astype(int)
+    
+    # Drop columns with average length greater than the threshold
+    filtered_df = df.loc[:, avg_lengths <= length_limit]
+    
+    return filtered_df, avg_lengths.to_dict()
+
 # def data_imputation(dataset_name='', path='', models=[], number_of_rows=100, number_of_examples=3, sample_size=None, few_shot_sampling_method='random', shot_number=3, annotation='GPT 3.5'):
 def data_imputation(config):
     dataset = config.get("dataset", {}).get("name")
@@ -692,7 +681,12 @@ def data_imputation(config):
         # drop NaNs
         df = df.dropna()
 
+        # to lowercase
+        df = df.apply(lambda x: x.str.lower() if x.dtype == "object" else x) # to lowercase
+
         trg = config.get("dataset", {}).get("target_column")
+
+        _, _, df = preprocessing(dataset_name, df)
 
         sample_method = config.get("sampling", {}).get("method")
         sample_number = config.get("sampling", {}).get("number_of_samples")
@@ -710,6 +704,12 @@ def data_imputation(config):
         print("Sampling Method: " + str(sample_method) +
               " # Samples: " + str(len(sampled_df)))
         print("Sampled Labels: " + str(sampled_df[trg].tolist()))
+
+        # Drop columns with average length greater than the threshold
+        length_limit = config.get("column_length_limit")
+        # df, avg_len = drop_long_columns(df, length_limit)
+        # print(avg_len)
+        print(df.columns)
 
         # Which column(s) are atomic?
         ner_method = config.get("ner", {}).get("method")
@@ -734,39 +734,41 @@ def data_imputation(config):
         p = config.get("dependency_finder", {}).get("inner_threshold")
         q = config.get("dependency_finder", {}).get("outer_threshold")
 
-        # train:
-        src_list, _, _, rules_str, _, _ = rule_generator(
-            dataset_name, sampled_df, trg, method, p, q, ner_number_of_examples, number_of_rules)
-
-        # test:
-
         apply_examples = config.get("apply", {}).get("number_of_examples")
         apply_rows = config.get("apply", {}).get("number_of_rows")
-        # samples are used for the test phase
-        samples = sampling(sampled_df, apply_rows)
+        samples = sampling(df, apply_rows)
 
-        # print(samples)
+        # train:
+        if method == 'LCS':
+            src_list = rule_generator(dataset_name, sampled_df, trg, method, p, q, number_of_rules)
+            # result
+            print(dependency_level_to_categorical(dependency_level, dataset))
+            # test:
+            rules = [src + " -> " + trg for src in src_list]
 
-        rules = [src + " -> " + trg for src in src_list]
+            key_response_pairs = pd.DataFrame(columns=['id', 'key'] + rules) 
+            key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
 
-        key_response_pairs = pd.DataFrame(
-            columns=['id', 'key'] + rules)  # + model_output_names)
+            for src in src_list:
 
-        # key_response_pairs = fill_keys(samples, df[trg], key_response_pairs)
-        key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
+                rule = src + " -> " + trg
 
-        for src in src_list:
+                # examples are used for the applying rule
+                apply_examples_df = example_generator(method, df, src, trg, apply_examples)
 
-            rule = src + " -> " + trg
+                print("Selected Dataframe: ")
+                print(apply_examples_df.head(10))
 
-            # examples are used for the applying rule
-            apply_examples_df = example_generator(
-                df, src, trg, apply_examples)
-
+        elif method == 'ALL':
+            rule = 'ALL' + ' -> ' + trg
+            key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
+            key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
+            apply_examples_df = example_generator(method, df, None, trg, apply_examples)
+            
             print("Selected Dataframe: ")
             print(apply_examples_df.head(10))
+        
+        key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
 
-            key_response_pairs = run_models(
-                model, df, key_response_pairs, rule, samples, apply_examples_df)
 
     return key_response_pairs

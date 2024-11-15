@@ -62,6 +62,7 @@ def common_patterns(strings, p):
 
 
 def grouped_key_patterns(df, p):
+    #df = df.apply(lambda x: x.str.lower() if x.dtype == "object" else x) # to lowercase
     grouped = df.groupby(df.columns[1])
     all_substrings = defaultdict(set)
     group_substrings = {}
@@ -93,6 +94,7 @@ def grouped_key_patterns(df, p):
         for substring in substrings:
             is_unique = True
             for other_substring in all_substrings:
+                #TODO
                 if substring != other_substring and substring in other_substring:
                     # If the substring is part of a longer substring in another group, it's not unique
                     if group not in all_substrings[other_substring]:
@@ -100,7 +102,7 @@ def grouped_key_patterns(df, p):
                         break
 
             # Only keep substring if it's unique
-            if is_unique and len(all_substrings[substring]) == 1:
+            if is_unique: # and len(all_substrings[substring]) == 1: #TODO
                 unique_substrings.append(substring)
 
         # Add unique substrings to result
@@ -123,7 +125,7 @@ def is_dependant(df, p, q):
     required_groups = q * total_groups
     status = len(groups_with_unique_substrings) >= required_groups
     # degree = len(groups_with_unique_substrings)/total_groups
-    frequency = word_frequency(list(result.keys()))
+    frequency = -1 # word_frequency(list(result.keys())) if status else -1
     return status, frequency, result
 
 
@@ -141,6 +143,6 @@ def is_dependant(df, p, q):
 # }
 # df = pd.DataFrame(data)
 
-# # Output will depend on the data and p, n values
-# print(grouped_key_patterns(df, 0.8))
+# Output will depend on the data and p, n values
+#print(grouped_key_patterns(df, 0.8))
 # print(is_dependant(df, 0.8, 0.9))
