@@ -6,7 +6,7 @@ import pandas as pd
 
 prompt = ''
 
-models = ["Llama", "Gemini", "GPT 3.5", "GPT 4"]
+models = ["Llama", "Gemini", "GPT Small", "GPT Large"]
 
 
 def prompt_runner(model, prompt):
@@ -17,10 +17,10 @@ def prompt_runner(model, prompt):
     #     response = llama(prompt)
     # if model == "Gemini":
     #     response = gemini(prompt)
-    if model == "GPT 3.5":
-        response = gpt3(prompt)
-    if model == "GPT 4":
-        response = gpt4(prompt)
+    if model == "GPT Small":
+        response = gpt_small(prompt)
+    if model == "GPT Large":
+        response = gpt_large(prompt)
     # print("Response: " + response)
     # print("Execution time: {:.2f} ms \n".format(
     #     (time.time()-start_time) * 1000))
