@@ -137,15 +137,15 @@ Input:
     }
 )
 
-# Address: Mailing address.
-
 MAPPING_PROMPTS = namedtuple('MAPPING_HANDLER_PROMPTS', 'VALUE')
 MAPPING_HANDLER_PROMPTS = MAPPING_PROMPTS(
     VALUE={
         'MAPPING_HANDLER_INITIAL':
-        '''
-Act as a function that gets a <src> value and returns a <trg> value (<rule>). Your answer should be just <trg> name without any other description. You will be given a few examples to guide your response.
-Here are examples:
+'''
+Act as a function that gets <src> value and returns a <trg> value (<rule>). Your answer should be just <trg> name without any other description. You will be given a few examples to guide your response. Here are examples:
 ''',
-        'MAPPING_HANDLER_FIXED_QUERRY': ''' <trg>: ?''',
+        'MAPPING_HANDLER_MIDDLE':
+'''Now return the <trg> without any other description:
+''',
+        'MAPPING_HANDLER_QUERRY': '''<trg>: ?'''
     })
