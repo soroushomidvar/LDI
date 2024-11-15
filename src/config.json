@@ -1,31 +1,32 @@
 {
     "task": "Data Imputation",
     "dataset": {
-        "name": "zomato",
-        "target_column": "location"
+        "name": "restaurant",
+        "target_column": "city"
     },
-    "model": "GPT 3.5",
+    "model": "GPT Small",
     "number_of_rules": 3,
+    "column_length_limit": 500,
     "sampling": {
         "method": "Group Sampling",
         "number_of_samples": 50,
-        "m": 10,
-        "n": 10
+        "m": 5,
+        "n": 5
     },
     "ner": {
         "method": null,
-        "number_of_examples": 5,
+        "number_of_examples": 3,
         "atomicity_threshold": 0.7,
         "entity_detection_threshold": 0.5
     },
     "dependency_finder": {
-        "method": "LCS",
-        "inner_threshold": 0.9,
-        "outer_threshold": 0.9
+        "method": "ALL",
+        "inner_threshold": 0.6,
+        "outer_threshold": 0.6
     },
     "apply": {
         "number_of_rows": 10,
-        "number_of_examples": 10
+        "number_of_examples": 3
     },
     "result_path": "res.csv",
     "output_path": "out.txt"
