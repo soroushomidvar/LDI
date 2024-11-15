@@ -29,5 +29,5 @@ def serialize_rows(df, row_numbers=None):
     for d in serialized_data_list:
         for key, value in d.items():
             r += f'{key}: {value}, '
-
-    return r[:-2]
+        r = r[:-2] + '\n'
+    return r
