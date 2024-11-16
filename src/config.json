@@ -10,8 +10,8 @@
     "sampling": {
         "method": "Group Sampling",
         "number_of_samples": 50,
-        "m": 5,
-        "n": 5
+        "m": 6,
+        "n": 6
     },
     "ner": {
         "method": null,
@@ -20,9 +20,9 @@
         "entity_detection_threshold": 0.5
     },
     "dependency_finder": {
-        "method": "ALL",
-        "inner_threshold": 0.6,
-        "outer_threshold": 0.6
+        "method": "LCS",
+        "inner_threshold": 0.7,
+        "outer_threshold": 0.7
     },
     "apply": {
         "number_of_rows": 10,

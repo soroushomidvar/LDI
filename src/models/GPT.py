@@ -21,7 +21,7 @@ def gpt_small(prompt):
 
 def gpt_large(prompt):
     response = client.chat.completions.create(
-        model="gpt-4-turbo",
+        model="gpt-4-turbo", #
         messages=[{"role": "user", "content": prompt}]
     )
     return str(response.choices[0].message.content).strip()
