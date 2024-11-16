@@ -759,6 +759,8 @@ def data_imputation(config):
                 print("Selected Dataframe: ")
                 print(apply_examples_df.head(10))
 
+                key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
+
         elif method == 'ALL':
             rule = 'ALL' + ' -> ' + trg
             key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
@@ -768,7 +770,7 @@ def data_imputation(config):
             print("Selected Dataframe: ")
             print(apply_examples_df.head(10))
         
-        key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
+            key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
 
 
     return key_response_pairs
