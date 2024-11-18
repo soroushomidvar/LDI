@@ -5,6 +5,8 @@ from constants.datasets import *
 from tools.dual_output import *
 from constants.paths import *
 import warnings
+import pandas as pd
+import openpyxl
 warnings.filterwarnings("ignore")
 
 # MODELS = ["GPT 3.5"]  # , "GPT 4", "Llama", "Gemini",
@@ -17,10 +19,26 @@ warnings.filterwarnings("ignore")
 
 def DI(config):
     print("Task: Data Imputation\n")
-    df = data_imputation(config)
-    df.to_csv(os.path.join(RES_PATH, config.get("result_path")), index=False)
-    print("\nResult Dataframe: ")
-    print(df.head())
+    
+    repeat = config.get("repeat")
+    result_path = os.path.join(RES_PATH, config.get("result_path"))
+    for i in range(repeat):
+        df = data_imputation(config)
+
+        if not os.path.exists(result_path):
+            # Write the first sheet if the file does not exist
+            with pd.ExcelWriter(result_path, mode='w', engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name=f'Run {i+1}', index=False)
+        else:
+            # Append to the existing file
+            with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
+                df.to_excel(writer, sheet_name=f'Run {i+1}', index=False)
+        
+        print("\nResult Dataframe: ")
+        print(df.head())
+    
+    #df.to_csv(os.path.join(RES_PATH, config.get("result_path")), index=False)
+    
 
 
 def read_config():
@@ -39,11 +57,15 @@ def read_config():
 
 def set_output(config):
     output_path = os.path.join(RES_PATH, config.get("output_path"))
+    result_path = os.path.join(RES_PATH, config.get("result_path"))
 
     out = dual_output(output_path)
 
     if os.path.exists(output_path):
         os.remove(output_path)
+    
+    if os.path.exists(result_path):
+        os.remove(result_path)
 
     sys.stdout = out
 
