@@ -7,6 +7,7 @@
     "model": "GPT Small",
     "number_of_rules": 3,
     "column_length_limit": 500,
+    "repeat": 3,
     "sampling": {
         "method": "Group Sampling",
         "number_of_samples": 50,
@@ -20,7 +21,7 @@
         "entity_detection_threshold": 0.5
     },
     "dependency_finder": {
-        "method": "LCS",
+        "method": "ALL",
         "inner_threshold": 0.7,
         "outer_threshold": 0.7
     },
@@ -28,6 +29,6 @@
         "number_of_rows": 10,
         "number_of_examples": 3
     },
-    "result_path": "res.csv",
+    "result_path": "res.xlsx",
     "output_path": "out.txt"
 }
