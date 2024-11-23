@@ -118,7 +118,7 @@ def sampling(df, sample_size):
     return samples
 
 
-def example_generator(method, df, src, trg, examples_number):
+def example_generator(method, df, src, trg, example_method, example_rows, examples_number, random_seed):
     if examples_number > df[trg].nunique():
         raise ValueError(
             "The number of unique examples requested exceeds the number of unique values in the trg column.")
@@ -127,25 +127,36 @@ def example_generator(method, df, src, trg, examples_number):
     #unique_examples = pd.DataFrame(columns=[src, trg])
     unique_examples = pd.DataFrame(columns=df.columns if method == 'ALL' else [src, trg])
 
-    # Create a list of already selected trg values
-    selected_trg_values = set()
 
+
+
+    selected_trg_values = set()
+    rng = random.Random(random_seed)
+
+    k = 0 # manual method
     while len(unique_examples) < examples_number:
         # Randomly select a row index
-        random_index = random.choice(df.index)
+        
+        #random_index = random.choice(df.index)
+
+        #random_index = np.random.choice(df.index)
+        if example_method == "random":
+            i = rng.choice(df.index)
+        elif example_method == "manual":
+            i = example_rows[k]
+            k += 1
 
         # Get the trg value of the randomly selected row
-        trg_value = df.loc[random_index, trg]
+        trg_value = df.loc[i, trg]
 
         # If the trg value has not been selected before, add the row to unique_examples
-        if trg_value not in selected_trg_values:
+        if example_method == "manual" or trg_value not in selected_trg_values:
             selected_trg_values.add(trg_value)
             if method == 'LCS':
-                selected_row = df.loc[[random_index], [src, trg]]
+                selected_row = df.loc[[i], [src, trg]]
             elif method == 'ALL':
-                selected_row = df.loc[[random_index], :] 
+                selected_row = df.loc[[i], :] 
             unique_examples = pd.concat([unique_examples, selected_row])
-
 
     return unique_examples.reset_index(drop=True)
 
@@ -734,7 +745,10 @@ def data_imputation(config):
         p = config.get("dependency_finder", {}).get("inner_threshold")
         q = config.get("dependency_finder", {}).get("outer_threshold")
 
-        apply_examples = config.get("apply", {}).get("number_of_examples")
+        example_method = config.get("examples", {}).get("method")
+        example_rows = config.get("examples", {}).get("rows")
+        number_of_examples = config.get("examples", {}).get("number_of_examples")
+        random_seed = config.get("examples", {}).get("random_seed")
         apply_rows = config.get("apply", {}).get("number_of_rows")
         samples = sampling(df, apply_rows)
 
@@ -754,7 +768,7 @@ def data_imputation(config):
                 rule = src + " -> " + trg
 
                 # examples are used for the applying rule
-                apply_examples_df = example_generator(method, df, src, trg, apply_examples)
+                apply_examples_df = example_generator(method, df, src, trg, example_method, example_rows, number_of_examples, random_seed)
 
                 print("Selected Dataframe: ")
                 print(apply_examples_df.head(10))
@@ -765,7 +779,7 @@ def data_imputation(config):
             rule = 'ALL' + ' -> ' + trg
             key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
             key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
-            apply_examples_df = example_generator(method, df, None, trg, apply_examples)
+            apply_examples_df = example_generator(method, df, None, trg, example_method, example_rows, number_of_examples, random_seed)
             
             print("Selected Dataframe: ")
             print(apply_examples_df.head(10))
