@@ -1,18 +1,17 @@
 {
     "task": "Data Imputation",
     "dataset": {
-        "name": "restaurant",
-        "target_column": "city"
+        "name": "buy",
+        "target_column": "manufacturer"
     },
     "model": "GPT Small",
-    "number_of_rules": 3,
     "column_length_limit": 500,
-    "repeat": 3,
+    "repeat": 1,
     "sampling": {
         "method": "Group Sampling",
         "number_of_samples": 50,
-        "m": 6,
-        "n": 6
+        "m": 5,
+        "n": 5
     },
     "examples": {
         "method": "random",
@@ -26,17 +25,26 @@
     },
     "ner": {
         "method": null,
-        "number_of_examples": 3,
+        "number_of_examples": 1,
         "atomicity_threshold": 0.7,
         "entity_detection_threshold": 0.5
     },
     "dependency_finder": {
         "method": "LCS",
-        "inner_threshold": 0.7,
-        "outer_threshold": 0.7
+        "column_selection": "multi",
+        "number_of_rules": -1,
+        "inner_threshold": 0.9,
+        "outer_threshold": 0.9
     },
     "apply": {
-        "number_of_rows": 10
+        "number_of_rows": 100,
+        "random_seed": 123
+    },
+    "evaluate": {
+        "methods": [
+            "exact_match",
+            "substr_match"
+        ]
     },
     "result_path": "res.xlsx",
     "output_path": "out.txt"
