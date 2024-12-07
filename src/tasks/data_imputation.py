@@ -109,27 +109,30 @@ def rule_generator_old(dataset_name, rest, df, shot_number, method='random', tar
     return prompt, serialized_target_row, named_entities
 
 
-def sampling(df, sample_size):
+def sampling(df, sample_size, apply_random_seed):
     if sample_size is None:
         samples = np.arange(len(df))  # all data
     else:
+        np.random.seed(apply_random_seed)
         samples = np.random.choice(
             np.arange(len(df)-1), size=sample_size, replace=False)
     return samples
 
 
-def example_generator(method, df, src, trg, example_method, example_rows, examples_number, random_seed):
+def example_generator(method, column_selection, df, src, trg, example_method, example_rows, examples_number, random_seed):
     if examples_number > df[trg].nunique():
         raise ValueError(
             "The number of unique examples requested exceeds the number of unique values in the trg column.")
+    
+    if method == 'ALL':
+        unique_examples = pd.DataFrame(columns=df.columns)
+    if method == 'LCS':
+        if column_selection == 'single':
+            unique_examples = pd.DataFrame(columns = [src, trg])
+        elif column_selection == 'multi':
+            unique_examples = pd.DataFrame(columns = src + [trg])
 
-    # Initialize an empty DataFrame to store the unique examples
-    #unique_examples = pd.DataFrame(columns=[src, trg])
-    unique_examples = pd.DataFrame(columns=df.columns if method == 'ALL' else [src, trg])
-
-
-
-
+    # unique_examples = pd.DataFrame(columns=df.columns if method == 'ALL' else [src, trg])
     selected_trg_values = set()
     rng = random.Random(random_seed)
 
@@ -153,7 +156,10 @@ def example_generator(method, df, src, trg, example_method, example_rows, exampl
         if example_method == "manual" or trg_value not in selected_trg_values:
             selected_trg_values.add(trg_value)
             if method == 'LCS':
-                selected_row = df.loc[[i], [src, trg]]
+                if column_selection == 'single':
+                    selected_row = df.loc[[i], [src, trg]]
+                elif column_selection == 'multi':
+                    selected_row = df.loc[[i], src + [trg]]
             elif method == 'ALL':
                 selected_row = df.loc[[i], :] 
             unique_examples = pd.concat([unique_examples, selected_row])
@@ -332,7 +338,10 @@ def get_top_n_features(feature_importance_dict, n):
     # Sort the dictionary by values in descending order and get the top n keys
     sorted_features = sorted(
         feature_importance_dict.items(), key=lambda item: item[1], reverse=True)
-    top_n_keys = [item[0] for item in sorted_features[:n]]
+    if n!= -1:
+        top_n_keys = [item[0] for item in sorted_features[:n]]
+    else: 
+        top_n_keys = [item[0] for item in sorted_features[:]]
     return top_n_keys
 
 
@@ -662,6 +671,34 @@ def drop_long_columns(df, length_limit):
     
     return filtered_df, avg_lengths.to_dict()
 
+
+def evaluate(key_response_df, methods):
+    res = key_response_df.copy()
+    methods = set(methods) 
+
+    for col in res.columns:
+        if col not in ['id', 'key']:
+            if 'exact_match' in methods:
+                # Add a column for exact match
+                exact_col_name = f"exact_match_{col}"
+                res[exact_col_name] = res.apply(
+                    lambda row: 1 if str(row['key']).strip().lower() == str(row[col]).strip().lower() else 0, 
+                    axis=1
+                )
+
+            if 'substr_match' in methods:
+                # Add a column for substring match
+                substr_col_name = f"substr_match_{col}"
+                res[substr_col_name] = res.apply(
+                    lambda row: 1 if (
+                        str(row['key']).strip().lower() in str(row[col]).strip().lower() or
+                        str(row[col]).strip().lower() in str(row['key']).strip().lower()
+                    ) else 0, 
+                    axis=1
+                )
+
+    return res
+
 # def data_imputation(dataset_name='', path='', models=[], number_of_rows=100, number_of_examples=3, sample_size=None, few_shot_sampling_method='random', shot_number=3, annotation='GPT 3.5'):
 def data_imputation(config):
     dataset = config.get("dataset", {}).get("name")
@@ -740,17 +777,20 @@ def data_imputation(config):
         sampled_df = entity_extractor(
             sampled_df, atomicity_status, ner_number_of_examples, entity_detection_threshold)
 
-        number_of_rules = config.get("number_of_rules", 3)
         method = config.get("dependency_finder", {}).get("method")
+        column_selection = config.get("dependency_finder", {}).get("column_selection")
+        number_of_rules = config.get("dependency_finder", {}).get("number_of_rules", 3)
         p = config.get("dependency_finder", {}).get("inner_threshold")
         q = config.get("dependency_finder", {}).get("outer_threshold")
 
         example_method = config.get("examples", {}).get("method")
         example_rows = config.get("examples", {}).get("rows")
         number_of_examples = config.get("examples", {}).get("number_of_examples")
-        random_seed = config.get("examples", {}).get("random_seed")
+        examples_random_seed = config.get("examples", {}).get("random_seed")
         apply_rows = config.get("apply", {}).get("number_of_rows")
-        samples = sampling(df, apply_rows)
+        apply_random_seed = config.get("apply", {}).get("random_seed")
+        evaluate_methods = config.get("evaluate", {}).get("methods")
+        samples = sampling(df, apply_rows, apply_random_seed)
 
         # train:
         if method == 'LCS':
@@ -758,33 +798,38 @@ def data_imputation(config):
             # result
             print(dependency_level_to_categorical(dependency_level, dataset))
             # test:
-            rules = [src + " -> " + trg for src in src_list]
 
-            key_response_pairs = pd.DataFrame(columns=['id', 'key'] + rules) 
-            key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
+            if column_selection == 'single':
 
-            for src in src_list:
+                rules = [src + " -> " + trg for src in src_list]
+                key_response_pairs = pd.DataFrame(columns=['id', 'key'] + rules) 
+                key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
 
-                rule = src + " -> " + trg
-
-                # examples are used for the applying rule
-                apply_examples_df = example_generator(method, df, src, trg, example_method, example_rows, number_of_examples, random_seed)
-
-                print("Selected Dataframe: ")
-                print(apply_examples_df.head(10))
-
-                key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
-
+                for src in src_list:
+                    rule = src + " -> " + trg
+                    apply_examples_df = example_generator(method, column_selection, df, src, trg, example_method, example_rows, number_of_examples, examples_random_seed)
+                    # print("Selected Dataframe: ")
+                    # print(apply_examples_df.head(10))
+                    # key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
+            
+            elif column_selection == 'multi':
+                rule = str(src_list) + ' -> ' + trg
+                key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
+                key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
+                apply_examples_df = example_generator(method, column_selection, df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed)
+        
         elif method == 'ALL':
             rule = 'ALL' + ' -> ' + trg
             key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
             key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
-            apply_examples_df = example_generator(method, df, None, trg, example_method, example_rows, number_of_examples, random_seed)
+            apply_examples_df = example_generator(method, column_selection, df, None, trg, example_method, example_rows, number_of_examples, examples_random_seed)
             
-            print("Selected Dataframe: ")
-            print(apply_examples_df.head(10))
-        
-            key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
+        print("Selected Dataframe: ")
+        print(apply_examples_df.head(10))
+    
+        key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
+
+        res = evaluate(key_response_pairs, evaluate_methods)
 
 
-    return key_response_pairs
+    return res
