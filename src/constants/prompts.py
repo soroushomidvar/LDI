@@ -5,45 +5,45 @@ FIXED_FEW_SHOT_TEXT = 'You are given some examples to guide your response: '
 
 DATASET_PROMPTS = namedtuple('DATASET_PROMPTS', 'VALUE')
 
-BUY_DATASET_PROMPTS = DATASET_PROMPTS(
-    VALUE={
-        'FIXED_INITIAL':
-        '''
-Your task is to generate a simple rule that identifies the product manufacturer based on the given information. Your response should be just the rule in the following format without any additional information. \n <entity-type>:<named-entity>-><manufacturer> 
-<named-entity> is the entity that is useful to generate the manufacturer name and <entity-type> is its type ('CARDINAL', 'DATE', 'EVENT', 'FAC', 'GPE', 'LANGUAGE', 'LAW', 'LOC', 'MONEY', 'NORP', 'ORDINAL', 'ORG', 'PERCENT', 'PERSON', 'PRODUCT', 'QUANTITY', 'TIME', 'WORK_OF_ART'). <manufacturer> must be one these values: ["LINKSYS", "Netgear", "Belkin", "LACIE", "Canon", "Kensington", "Tripp Lite", "Sony", "D-Link", "Panasonic", "Logitech", "Sennheiser", "Garmin", "OMNIMOUNT SYSTEMS, INC", "Sanus", "Plantronics Bluetooth", "Peerless", "UNIVERSAL REMOTE CONTROL, INC", "Nikon", "Sirius", "Audiovox", "Xm", "Fellowes", "Uniden", "Pioneer", "BOSE", "Apple", "Sharp", "Techcraft", "Denon", "Toshiba", "Kenwood", "Griffin", "Olympus", "Tech Craft", "TRANSCEND INFORMATION", "Polk Audio", "Tom Tom", "Coby", "Case Logic", "Jabra", "Yamaha", "Monster Cable", "Monster", "Bracketron", "Speck Products", "Klipsch", "Microsoft", "Contour", "Canon Camcorders", "Samsung", "ELGATO SYSTEMS", "Plantronics", "Sony DSLR", "Onkyo", "Alpine", "Z-LINE DESIGNS", "PIONEER ELECTRONICS USA", "Pure Digital Technol", "Boston Acoustics", "Mitsubishi", "LG Electronics"] \n You are given one example to guide your response: 
-Nikon [ORG] 55-200mm [QUANTITY] 0.28x - 55mm [QUANTITY] 200mm - f/4 [QUANTITY] 5.6 [CARDINAL], Rule: ORG:Nikon->Nikon\n
-''',
-        'FIXED_QUERRY': 'Rule: ?'
-    }
-)
+# BUY_DATASET_PROMPTS = DATASET_PROMPTS(
+#     VALUE={
+#         'FIXED_INITIAL':
+#         '''
+# Your task is to generate a simple rule that identifies the product manufacturer based on the given information. Your response should be just the rule in the following format without any additional information. \n <entity-type>:<named-entity>-><manufacturer> 
+# <named-entity> is the entity that is useful to generate the manufacturer name and <entity-type> is its type ('CARDINAL', 'DATE', 'EVENT', 'FAC', 'GPE', 'LANGUAGE', 'LAW', 'LOC', 'MONEY', 'NORP', 'ORDINAL', 'ORG', 'PERCENT', 'PERSON', 'PRODUCT', 'QUANTITY', 'TIME', 'WORK_OF_ART'). <manufacturer> must be one these values: ["LINKSYS", "Netgear", "Belkin", "LACIE", "Canon", "Kensington", "Tripp Lite", "Sony", "D-Link", "Panasonic", "Logitech", "Sennheiser", "Garmin", "OMNIMOUNT SYSTEMS, INC", "Sanus", "Plantronics Bluetooth", "Peerless", "UNIVERSAL REMOTE CONTROL, INC", "Nikon", "Sirius", "Audiovox", "Xm", "Fellowes", "Uniden", "Pioneer", "BOSE", "Apple", "Sharp", "Techcraft", "Denon", "Toshiba", "Kenwood", "Griffin", "Olympus", "Tech Craft", "TRANSCEND INFORMATION", "Polk Audio", "Tom Tom", "Coby", "Case Logic", "Jabra", "Yamaha", "Monster Cable", "Monster", "Bracketron", "Speck Products", "Klipsch", "Microsoft", "Contour", "Canon Camcorders", "Samsung", "ELGATO SYSTEMS", "Plantronics", "Sony DSLR", "Onkyo", "Alpine", "Z-LINE DESIGNS", "PIONEER ELECTRONICS USA", "Pure Digital Technol", "Boston Acoustics", "Mitsubishi", "LG Electronics"] \n You are given one example to guide your response: 
+# Nikon [ORG] 55-200mm [QUANTITY] 0.28x - 55mm [QUANTITY] 200mm - f/4 [QUANTITY] 5.6 [CARDINAL], Rule: ORG:Nikon->Nikon\n
+# ''',
+#         'FIXED_QUERRY': 'Rule: ?'
+#     }
+# )
 
-RESTAURANT_DATASET_PROMPTS = DATASET_PROMPTS(
-    VALUE={
-        'FIXED_INITIAL':
-        '''
-Your task is to generate a simple rule that identifies the city where the restaurant is located based on the given information. Your response should be just the rule in the following format without any additional information. \n <entity-type>:<named-entity>-><city> 
-<named-entity> is the entity that is useful to generate the city name and <entity-type> is its type. \n You are given one example to guide your response: 
-{"ORG": ["Sheraton Palace Hotel"], "FAC": ["2 New Montgomery Street"], "GPE": ["Market Street"], "CARDINAL": ["415/546-5000"]}, Rule: CARDINAL:415/546-5000->San Francisco \n
-''',
-        'FIXED_QUERRY': 'Rule: ?',
-        'MAPPING_HANDLER_INITIAL':
-        '''
-Act as a function named find_city that gets input (sth that identifies a citylike area code, etc.) and returns the city name for the given input. You should just return the output (city name), not anything else. Here are a few examples:
+# RESTAURANT_DATASET_PROMPTS = DATASET_PROMPTS(
+#     VALUE={
+#         'FIXED_INITIAL':
+#         '''
+# Your task is to generate a simple rule that identifies the city where the restaurant is located based on the given information. Your response should be just the rule in the following format without any additional information. \n <entity-type>:<named-entity>-><city> 
+# <named-entity> is the entity that is useful to generate the city name and <entity-type> is its type. \n You are given one example to guide your response: 
+# {"ORG": ["Sheraton Palace Hotel"], "FAC": ["2 New Montgomery Street"], "GPE": ["Market Street"], "CARDINAL": ["415/546-5000"]}, Rule: CARDINAL:415/546-5000->San Francisco \n
+# ''',
+#         'FIXED_QUERRY': 'Rule: ?',
+#         'MAPPING_HANDLER_INITIAL':
+#         '''
+# Act as a function named find_city that gets input (sth that identifies a citylike area code, etc.) and returns the city name for the given input. You should just return the output (city name), not anything else. Here are a few examples:
 
-Input: 213/467-1108
-Output: los Angeles
+# Input: 213/467-1108
+# Output: los Angeles
 
-Input: 415/399-0499
-Output: san francisco
+# Input: 415/399-0499
+# Output: san francisco
 
-Input: 310/456-0488
-Output: malibu
+# Input: 310/456-0488
+# Output: malibu
 
-Now return the city name without any other description.
-''',
-            'MAPPING_HANDLER_QUERRY': 'Output: ?'
-    }
-)
+# Now return the city name without any other description.
+# ''',
+#             'MAPPING_HANDLER_QUERRY': 'Output: ?'
+#     }
+# )
 
 # Your task is to generate a Python dictionary that shows the named entities in the given text. Your response should be just a Python dictionary where the type of each named entity is the key and the entities of each type are values of that key.
 
