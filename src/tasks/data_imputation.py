@@ -5,6 +5,7 @@ from tools.entity_recognition import *
 from tools.sketch_generator import *
 from tools.dependency_finder import *
 import json
+import string
 import pandas as pd
 import os
 import numpy as np
@@ -27,29 +28,42 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 import ast
 from sklearn.impute import SimpleImputer
+import unicodedata
+import re
 
 
 def preprocessing(dataset_name, df):
 
-    if dataset_name == BUY_DATASET_CONSTANTS.VALUE['NAME']:
-        df = df[BUY_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
-        key = df[BUY_DATASET_CONSTANTS.VALUE['KEY']]
-        rest = df[BUY_DATASET_CONSTANTS.VALUE['REST']]
+    if dataset_name == DATASETS[dataset_name]['NAME']:
+        df = df[DATASETS[dataset_name]['ALL_COLUMNS']]
+        key = df[DATASETS[dataset_name]['KEY']]
+        rest_cols = [x for x in DATASETS[dataset_name]['ALL_COLUMNS'] if x not in DATASETS[dataset_name]['KEY']]
+        rest = df[rest_cols]
 
-    elif dataset_name == RESTAURANT_DATASET_CONSTANTS.VALUE['NAME']:
-        df = df[RESTAURANT_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
-        key = df[RESTAURANT_DATASET_CONSTANTS.VALUE['KEY']]
-        rest = df[RESTAURANT_DATASET_CONSTANTS.VALUE['REST']]
+    # elif dataset_name == DATASETS['restaurant']['NAME']:
+    #     df = df[DATASETS['restaurant']['ALL_COLUMNS']]
+    #     key = df[DATASETS['restaurant']['KEY']]
+    #     #rest = df[RESTAURANT_DATASET_CONSTANTS.VALUE['REST']]
 
-    elif dataset_name == FLIPKART_DATASET_CONSTANTS.VALUE['NAME']:
-        df = df[FLIPKART_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
-        key = df[FLIPKART_DATASET_CONSTANTS.VALUE['KEY']]
-        rest = df[FLIPKART_DATASET_CONSTANTS.VALUE['REST']]
+    # elif dataset_name == DATASETS['flipkart']['NAME']:
+    #     df = df[DATASETS['flipkart']['ALL_COLUMNS']]
+    #     key = df[DATASETS['flipkart']['KEY']]
+    #     #rest = df[FLIPKART_DATASET_CONSTANTS.VALUE['REST']]
 
-    elif dataset_name == ZOMATO_DATASET_CONSTANTS.VALUE['NAME']:
-        df = df[ZOMATO_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
-        key = df[ZOMATO_DATASET_CONSTANTS.VALUE['KEY']]
-        rest = df[ZOMATO_DATASET_CONSTANTS.VALUE['REST']]
+    # elif dataset_name == DATASETS['flipkart']['NAME']:
+    #     df = df[ZOMATO_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
+    #     key = df[ZOMATO_DATASET_CONSTANTS.VALUE['KEY']]
+    #     rest = df[ZOMATO_DATASET_CONSTANTS.VALUE['REST']]
+
+    # elif dataset_name == WALMART_DATASET_CONSTANTS.VALUE['NAME']:
+    #     df = df[WALMART_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
+    #     key = df[WALMART_DATASET_CONSTANTS.VALUE['KEY']]
+    #     rest = df[WALMART_DATASET_CONSTANTS.VALUE['REST']]
+    
+    # elif dataset_name == PHONE_DATASET_CONSTANTS.VALUE['NAME']:
+    #     df = df[PHONE_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
+    #     key = df[PHONE_DATASET_CONSTANTS.VALUE['KEY']]
+    #     rest = df[PHONE_DATASET_CONSTANTS.VALUE['REST']]
 
     return key, rest, df
 
@@ -61,17 +75,17 @@ def rule_generator_old(dataset_name, rest, df, shot_number, method='random', tar
     serialized_target_row = ''
     fixed_querry = ''
 
-    def dataset_specific_prompt_generator():
+    # def dataset_specific_prompt_generator():
 
-        if dataset_name == BUY_DATASET_CONSTANTS.VALUE['NAME']:
-            fixed_initial = BUY_DATASET_PROMPTS.VALUE['FIXED_INITIAL']
-            fixed_querry = BUY_DATASET_PROMPTS.VALUE['FIXED_QUERRY']
+    #     if dataset_name == BUY_DATASET_CONSTANTS.VALUE['NAME']:
+    #         fixed_initial = BUY_DATASET_PROMPTS.VALUE['FIXED_INITIAL']
+    #         fixed_querry = BUY_DATASET_PROMPTS.VALUE['FIXED_QUERRY']
 
-        elif dataset_name == RESTAURANT_DATASET_CONSTANTS.VALUE['NAME']:
-            fixed_initial = RESTAURANT_DATASET_PROMPTS.VALUE['FIXED_INITIAL']
-            fixed_querry = RESTAURANT_DATASET_PROMPTS.VALUE['FIXED_QUERRY']
+    #     elif dataset_name == RESTAURANT_DATASET_CONSTANTS.VALUE['NAME']:
+    #         fixed_initial = RESTAURANT_DATASET_PROMPTS.VALUE['FIXED_INITIAL']
+    #         fixed_querry = RESTAURANT_DATASET_PROMPTS.VALUE['FIXED_QUERRY']
 
-        return fixed_initial, fixed_querry
+    #     return fixed_initial, fixed_querry
 
     def serializer():
         serialized_target_row = serialize_rows(rest, [target_row])
@@ -101,7 +115,7 @@ def rule_generator_old(dataset_name, rest, df, shot_number, method='random', tar
                 ', ' + serialized_target_row + ', ' + fixed_querry
         return prompt
 
-    fixed_initial, fixed_querry = dataset_specific_prompt_generator()
+    # fixed_initial, fixed_querry = dataset_specific_prompt_generator()
     serialized_target_row, serialized_samples = serializer()
     named_entities = named_entity_recognizer(serialized_target_row, annotation)
     prompt = shot_handler()
@@ -574,10 +588,10 @@ def entity_extractor(df, atomic_status, sample_size, threshold):
 #     return pd.DataFrame(new_columns)
 
 
-def mpping_handler(method, rule, model, examples, sample):
+def mpping_handler(method, rule, trg, model, examples, sample):
 
-    source_columns = examples.columns[:-1]  # All columns except the last one
-    target_column = examples.columns[-1] 
+    source_columns = [col for col in examples.columns if col != trg] #examples.columns[:-1]  # All columns except the last one
+    target_column = trg #examples.columns[-1] 
     src_names_str = ', '.join(source_columns)
     rule = src_names_str + ' -> ' + target_column
 
@@ -600,15 +614,47 @@ def mpping_handler(method, rule, model, examples, sample):
     return response
 
 
-def run_models(method, model, df, key_response_pairs, rule, samples, examples):
+def run_models(method, model, df, trg, key_response_pairs, rule, samples, examples):
 
     for sample in samples:
         value = mpping_handler(
-            method, rule, model, examples, get_sample_by_row_number(df, sample))
+            method, rule, trg, model, examples, get_sample_by_row_number(df, sample))
         key_response_pairs.loc[key_response_pairs['id']
                                == sample, rule] = value  # detect_value_from_response(rule)
 
     return key_response_pairs
+
+def print_dataframe_info(df):
+    print("### DataFrame Information ###\n")
+    
+    # Number of rows and columns
+    print(f"Number of rows: {df.shape[0]}")
+    print(f"Number of columns: {df.shape[1]}\n")
+    
+    # Column names
+    print("Column Names:")
+    for col in df.columns:
+        print(f" - {col}")
+    print()
+    
+    # Average Length of Values per Column
+    print("Average Length of Values per Column:")
+    for col in df.columns:
+        if df[col].dtype == 'object':  # String columns
+            avg_len = df[col].dropna().apply(len).mean()
+            print(f" - {col}: {avg_len:.2f} characters (average)")
+        else:
+            print(f" - {col}: Not applicable (non-string column)")
+    print()
+    
+    # Data types
+    print("Data Types:")
+    print(df.dtypes)
+    print()
+    
+    # General overview using df.info()
+    print("Detailed DataFrame Info:")
+    df.info()
 
 
 def group_sampling(df, trg, m, n):
@@ -671,6 +717,34 @@ def drop_long_columns(df, length_limit):
     
     return filtered_df, avg_lengths.to_dict()
 
+def flexible_match(key_value, col_value):
+
+    def normalize_string(s):
+        # Convert to lowercase
+        s = s.lower()
+        # Normalize Unicode characters (e.g., 'è' -> 'e')
+        s = unicodedata.normalize('NFKD', s).encode('ascii', 'ignore').decode('utf-8')
+        # Remove all punctuation
+        s = re.sub(f"[{re.escape(string.punctuation)}]", "", s)
+        # Remove any remaining spaces
+        s = s.replace(" ", "")
+        return s
+    
+
+    def check_subsequence(small, large):
+        it = iter(large)
+        return all(char in it for char in small)
+    
+
+    # Normalize inputs: strip spaces and convert to lowercase
+    key_value = normalize_string(key_value)
+    col_value = normalize_string(col_value)
+    
+    if check_subsequence(key_value, col_value) or check_subsequence(col_value, key_value):
+        return 1
+    return 0
+
+
 
 def evaluate(key_response_df, methods):
     res = key_response_df.copy()
@@ -680,7 +754,7 @@ def evaluate(key_response_df, methods):
         if col not in ['id', 'key']:
             if 'exact_match' in methods:
                 # Add a column for exact match
-                exact_col_name = f"exact_match_{col}"
+                exact_col_name = f"exact_match:{col}"
                 res[exact_col_name] = res.apply(
                     lambda row: 1 if str(row['key']).strip().lower() == str(row[col]).strip().lower() else 0, 
                     axis=1
@@ -688,7 +762,7 @@ def evaluate(key_response_df, methods):
 
             if 'substr_match' in methods:
                 # Add a column for substring match
-                substr_col_name = f"substr_match_{col}"
+                substr_col_name = f"substr_match:{col}"
                 res[substr_col_name] = res.apply(
                     lambda row: 1 if (
                         str(row['key']).strip().lower() in str(row[col]).strip().lower() or
@@ -696,28 +770,46 @@ def evaluate(key_response_df, methods):
                     ) else 0, 
                     axis=1
                 )
+            if 'flexible_match' in methods:
+                # Add a column for chunk match
+                chunk_col_name = f"flexible_match:{col}"
+                res[chunk_col_name] = res.apply(
+                    lambda row: flexible_match(row['key'], row[col]), 
+                    axis=1
+                )
 
     return res
 
 # def data_imputation(dataset_name='', path='', models=[], number_of_rows=100, number_of_examples=3, sample_size=None, few_shot_sampling_method='random', shot_number=3, annotation='GPT 3.5'):
 def data_imputation(config):
-    dataset = config.get("dataset", {}).get("name")
-    if dataset.lower() == "restaurant":
-        dataset_name = RESTAURANT_DATASET_CONSTANTS.VALUE['NAME']
-        dataset_path = os.path.join(
-            DATA_PATH, RESTAURANT_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    elif dataset.lower() == "buy":
-        dataset_name = BUY_DATASET_CONSTANTS.VALUE['NAME']
-        dataset_path = os.path.join(
-            DATA_PATH, BUY_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    elif dataset.lower() == "flipkart":
-        dataset_name = FLIPKART_DATASET_CONSTANTS.VALUE['NAME']
-        dataset_path = os.path.join(
-            DATA_PATH, FLIPKART_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    elif dataset.lower() == "zomato":
-        dataset_name = ZOMATO_DATASET_CONSTANTS.VALUE['NAME']
-        dataset_path = os.path.join(
-            DATA_PATH, ZOMATO_DATASET_CONSTANTS.VALUE['REL_PATH'])
+    
+    dataset_name = config.get("dataset", {}).get("name")
+    dataset_path = os.path.join(DATA_PATH,DATASETS[dataset_name]['REL_PATH'])
+
+    # if dataset.lower() == "restaurant":
+    #     dataset_name = RESTAURANT_DATASET_CONSTANTS.VALUE['NAME']
+    #     dataset_path = os.path.join(
+    #         DATA_PATH, RESTAURANT_DATASET_CONSTANTS.VALUE['REL_PATH'])
+    # elif dataset.lower() == "buy":
+    #     dataset_name = BUY_DATASET_CONSTANTS.VALUE['NAME']
+    #     dataset_path = os.path.join(
+    #         DATA_PATH, BUY_DATASET_CONSTANTS.VALUE['REL_PATH'])
+    # elif dataset.lower() == "flipkart":
+    #     dataset_name = FLIPKART_DATASET_CONSTANTS.VALUE['NAME']
+    #     dataset_path = os.path.join(
+    #         DATA_PATH, FLIPKART_DATASET_CONSTANTS.VALUE['REL_PATH'])
+    # elif dataset.lower() == "zomato":
+    #     dataset_name = ZOMATO_DATASET_CONSTANTS.VALUE['NAME']
+    #     dataset_path = os.path.join(
+    #         DATA_PATH, ZOMATO_DATASET_CONSTANTS.VALUE['REL_PATH'])
+    # elif dataset.lower() == "walmart":
+    #     dataset_name = WALMART_DATASET_CONSTANTS.VALUE['NAME']
+    #     dataset_path = os.path.join(
+    #         DATA_PATH, WALMART_DATASET_CONSTANTS.VALUE['REL_PATH'])
+    # elif dataset.lower() == "phone":
+    #     dataset_name = PHONE_DATASET_CONSTANTS.VALUE['NAME']
+    #     dataset_path = os.path.join(
+    #         DATA_PATH, PHONE_DATASET_CONSTANTS.VALUE['REL_PATH'])
 
     model = config.get("model")
     # model_output_names = [item + " rule" for item in models]
@@ -726,8 +818,11 @@ def data_imputation(config):
 
     if df is not None:
 
+        print_dataframe_info(df)
+        
         # drop NaNs
-        df = df.dropna()
+        #df = df.dropna()
+        df = df.fillna("")
 
         # to lowercase
         df = df.apply(lambda x: x.str.lower() if x.dtype == "object" else x) # to lowercase
@@ -796,7 +891,7 @@ def data_imputation(config):
         if method == 'LCS':
             src_list = rule_generator(dataset_name, sampled_df, trg, method, p, q, number_of_rules)
             # result
-            print(dependency_level_to_categorical(dependency_level, dataset))
+            print(dependency_level_to_categorical(dependency_level, dataset_name))
             # test:
 
             if column_selection == 'single':
@@ -827,7 +922,7 @@ def data_imputation(config):
         print("Selected Dataframe: ")
         print(apply_examples_df.head(10))
     
-        key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
+        key_response_pairs = run_models(method, model, df, trg, key_response_pairs, rule, samples, apply_examples_df)
 
         res = evaluate(key_response_pairs, evaluate_methods)
 
