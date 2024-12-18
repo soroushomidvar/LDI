@@ -9,14 +9,6 @@ import pandas as pd
 import openpyxl
 warnings.filterwarnings("ignore")
 
-# MODELS = ["GPT 3.5"]  # , "GPT 4", "Llama", "Gemini",
-
-# BUY_DATASET_PATH = os.path.join(
-#     DATA_PATH, BUY_DATASET_CONSTANTS.VALUE['REL_PATH'])
-# RESTAURANT_DATASET_PATH = os.path.join(
-#     DATA_PATH, RESTAURANT_DATASET_CONSTANTS.VALUE['REL_PATH'])
-
-
 def DI(config):
     print("Task: Data Imputation\n")
     
@@ -37,8 +29,26 @@ def DI(config):
         print("\nResult Dataframe: ")
         print(df.head())
     
+    #save config
+    flat_data = flatten_json(config)
+    config_df = pd.DataFrame(flat_data.items(), columns=["Key", "Value"])
+    with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
+                config_df.to_excel(writer, sheet_name=f'config', index=False)
+    
     #df.to_csv(os.path.join(RES_PATH, config.get("result_path")), index=False)
     
+
+def flatten_json(y, prefix=""):
+    # Normalize and flatten the JSON data for Excel
+    out = {}
+    for key, value in y.items():
+        if isinstance(value, dict):
+            out.update(flatten_json(value, f"{prefix}{key}."))
+        elif isinstance(value, list):
+            out[f"{prefix}{key}"] = ", ".join(map(str, value))  # Convert lists to comma-separated strings
+        else:
+            out[f"{prefix}{key}"] = value
+    return out
 
 
 def read_config():
