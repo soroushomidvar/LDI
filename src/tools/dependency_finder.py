@@ -28,18 +28,18 @@ def common_patterns(strings, p):
         return [substring for substring, count in substring_count.items()
                 if count / total_strings >= threshold]
 
-    def remove_substrings_within_longer(substrings):
-        # Remove substrings that are contained within longer substrings.
-        sorted_substrings = sorted(substrings, key=lambda x: -len(x))
-        filtered_substrings = []
-        seen = set()
+    # def remove_substrings_within_longer(substrings):
+    #     # Remove substrings that are contained within longer substrings.
+    #     sorted_substrings = sorted(substrings, key=lambda x: -len(x))
+    #     filtered_substrings = []
+    #     seen = set()
 
-        for substring in sorted_substrings:
-            if not any(substring in seen_substring for seen_substring in seen):
-                filtered_substrings.append(substring)
-                seen.add(substring)
+    #     for substring in sorted_substrings:
+    #         if not any(substring in seen_substring for seen_substring in seen):
+    #             filtered_substrings.append(substring)
+    #             seen.add(substring)
 
-        return filtered_substrings
+    #     return filtered_substrings
 
     threshold = p
     total_strings = len(strings)
@@ -59,6 +59,36 @@ def common_patterns(strings, p):
 
     # Return the top n substrings
     return sorted_substrings
+
+def remove_substrings_within_longer(data):
+    # Group substrings by their value
+    grouped_data = {}
+    for substring, label in data.items():
+        if label not in grouped_data:
+            grouped_data[label] = []
+        grouped_data[label].append(substring)
+
+    # Function to remove substrings contained within longer ones for each group
+    def remove_substrings_within_longer_per_value(substrings):
+        sorted_substrings = sorted(substrings, key=lambda x: -len(x))
+        filtered_substrings = []
+        seen = set()
+
+        for substring in sorted_substrings:
+            if not any(substring in seen_substring for seen_substring in seen):
+                filtered_substrings.append(substring)
+                seen.add(substring)
+
+        return filtered_substrings
+
+    # Process each group and build the resulting dictionary
+    result = {}
+    for label, substrings in grouped_data.items():
+        filtered_substrings = remove_substrings_within_longer_per_value(substrings)
+        for substring in filtered_substrings:
+            result[substring] = label
+
+    return result
 
 
 def grouped_key_patterns(df, p):
@@ -109,9 +139,12 @@ def grouped_key_patterns(df, p):
         for substring in unique_substrings:
             result[substring] = group
 
+    # Remove substrings that are contained within longer substrings
+    long_result = remove_substrings_within_longer(result)
+
     # Sort the result by substring length and alphabetically
     sorted_result = dict(
-        sorted(result.items(), key=lambda x: (-len(x[0]), x[0])))
+        sorted(long_result.items(), key=lambda x: (-len(x[0]), x[0])))
 
     # Return the top n results
     return dict(list(sorted_result.items()))
