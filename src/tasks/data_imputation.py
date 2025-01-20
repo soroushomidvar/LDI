@@ -819,6 +819,11 @@ def data_imputation(config):
     if df is not None:
 
         print_dataframe_info(df)
+
+        # Get number of unique values in each column
+        unique_counts = df.nunique()
+        # Print the results
+        print(unique_counts)
         
         # drop NaNs
         #df = df.dropna()
