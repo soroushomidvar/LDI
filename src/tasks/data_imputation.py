@@ -855,9 +855,9 @@ def data_imputation(config):
 
         # Drop columns with average length greater than the threshold
         length_limit = config.get("column_length_limit")
-        # df, avg_len = drop_long_columns(df, length_limit)
+        sampled_df, avg_len = drop_long_columns(sampled_df, length_limit)
         # print(avg_len)
-        print(df.columns)
+        print(sampled_df.columns)
 
         # Which column(s) are atomic?
         ner_method = config.get("ner", {}).get("method")
