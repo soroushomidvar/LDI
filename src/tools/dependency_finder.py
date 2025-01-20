@@ -52,10 +52,10 @@ def common_patterns(strings, p):
         substring_count, threshold, total_strings)
 
     # Remove substrings that are contained within longer substrings
-    filtered_substrings = remove_substrings_within_longer(valid_substrings)
+    # filtered_substrings = remove_substrings_within_longer(valid_substrings)
 
     # Sort substrings by length (longest first) and then alphabetically
-    sorted_substrings = sorted(filtered_substrings, key=lambda x: (-len(x), x))
+    sorted_substrings = sorted(valid_substrings, key=lambda x: (-len(x), x))
 
     # Return the top n substrings
     return sorted_substrings
