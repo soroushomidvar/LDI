@@ -5,13 +5,13 @@
         "target_column": "city"
     },
     "model": "GPT Small",
-    "column_length_limit": 500,
+    "column_length_limit": 200,
     "repeat": 1,
     "sampling": {
         "method": "Group Sampling",
         "number_of_samples": 50,
-        "m": 8,
-        "n": 10
+        "m": 14,
+        "n": 5
     },
     "examples": {
         "method": "random",
@@ -26,11 +26,10 @@
         "entity_detection_threshold": 0.5
     },
     "dependency_finder": {
-        "method": "ALL",
-        "column_selection": "multi",
+        "method": "LCS",
         "number_of_rules": -1,
-        "inner_threshold": 0.95,
-        "outer_threshold": 0.95
+        "inner_threshold": 0.7,
+        "outer_threshold": 0.7
     },
     "apply": {
         "number_of_rows": 5,

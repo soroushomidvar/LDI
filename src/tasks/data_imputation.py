@@ -133,7 +133,7 @@ def sampling(df, sample_size, apply_random_seed):
     return samples
 
 
-def example_generator(method, column_selection, df, src, trg, example_method, example_rows, examples_number, random_seed):
+def example_generator(method, df, src, trg, example_method, example_rows, examples_number, random_seed, sample):
     if examples_number > df[trg].nunique():
         raise ValueError(
             "The number of unique examples requested exceeds the number of unique values in the trg column.")
@@ -141,10 +141,10 @@ def example_generator(method, column_selection, df, src, trg, example_method, ex
     if method == 'ALL':
         unique_examples = pd.DataFrame(columns=df.columns)
     if method == 'LCS':
-        if column_selection == 'single':
-            unique_examples = pd.DataFrame(columns = [src, trg])
-        elif column_selection == 'multi':
-            unique_examples = pd.DataFrame(columns = src + [trg])
+        # if column_selection == 'single':
+        #     unique_examples = pd.DataFrame(columns = [src, trg])
+        # elif column_selection == 'multi':
+        unique_examples = pd.DataFrame(columns = src + [trg])
 
     # unique_examples = pd.DataFrame(columns=df.columns if method == 'ALL' else [src, trg])
     selected_trg_values = set()
@@ -162,6 +162,10 @@ def example_generator(method, column_selection, df, src, trg, example_method, ex
         elif example_method == "manual":
             i = example_rows[k]
             k += 1
+        # TODO : elif example_method == "similarity":
+
+
+
 
         # Get the trg value of the randomly selected row
         trg_value = df.loc[i, trg]
@@ -170,10 +174,10 @@ def example_generator(method, column_selection, df, src, trg, example_method, ex
         if example_method == "manual" or trg_value not in selected_trg_values:
             selected_trg_values.add(trg_value)
             if method == 'LCS':
-                if column_selection == 'single':
-                    selected_row = df.loc[[i], [src, trg]]
-                elif column_selection == 'multi':
-                    selected_row = df.loc[[i], src + [trg]]
+                # if column_selection == 'single':
+                #     selected_row = df.loc[[i], [src, trg]]
+                # elif column_selection == 'multi':
+                selected_row = df.loc[[i], src + [trg]]
             elif method == 'ALL':
                 selected_row = df.loc[[i], :] 
             unique_examples = pd.concat([unique_examples, selected_row])
@@ -614,11 +618,32 @@ def mpping_handler(method, rule, trg, model, examples, sample):
     return response
 
 
-def run_models(method, model, df, trg, key_response_pairs, rule, samples, examples):
+def run_models(config, df, src_list, trg, key_response_pairs, rule, samples):
 
+    method = config.get("dependency_finder", {}).get("method")
+    model = config.get("model")
+    #column_selection = config.get("dependency_finder", {}).get("column_selection")
+    example_method = config.get("examples", {}).get("method")
+    example_rows = config.get("examples", {}).get("rows")
+    number_of_examples = config.get("examples", {}).get("number_of_examples")
+    examples_random_seed = config.get("examples", {}).get("random_seed")
+
+    
     for sample in samples:
+
+        # if method == 'LCS' and column_selection == 'single':
+        #     apply_examples_df = example_generator(method, column_selection, df, src, trg, example_method, example_rows, number_of_examples, examples_random_seed)
+        # if method == 'LCS': #and column_selection == 'multi':
+        examples = example_generator(method, df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed, sample)
+        # elif method == 'ALL':
+        #     apply_examples_df = example_generator(method, df, None, trg, example_method, example_rows, number_of_examples, examples_random_seed)
+        
+        print("Selected Dataframe: ")
+        print(examples.head(10))
+
         value = mpping_handler(
             method, rule, trg, model, examples, get_sample_by_row_number(df, sample))
+        
         key_response_pairs.loc[key_response_pairs['id']
                                == sample, rule] = value  # detect_value_from_response(rule)
 
@@ -878,15 +903,12 @@ def data_imputation(config):
             sampled_df, atomicity_status, ner_number_of_examples, entity_detection_threshold)
 
         method = config.get("dependency_finder", {}).get("method")
-        column_selection = config.get("dependency_finder", {}).get("column_selection")
+        # column_selection = config.get("dependency_finder", {}).get("column_selection")
         number_of_rules = config.get("dependency_finder", {}).get("number_of_rules", 3)
         p = config.get("dependency_finder", {}).get("inner_threshold")
         q = config.get("dependency_finder", {}).get("outer_threshold")
 
-        example_method = config.get("examples", {}).get("method")
-        example_rows = config.get("examples", {}).get("rows")
-        number_of_examples = config.get("examples", {}).get("number_of_examples")
-        examples_random_seed = config.get("examples", {}).get("random_seed")
+        
         apply_rows = config.get("apply", {}).get("number_of_rows")
         apply_random_seed = config.get("apply", {}).get("random_seed")
         evaluate_methods = config.get("evaluate", {}).get("methods")
@@ -899,35 +921,37 @@ def data_imputation(config):
             print(dependency_level_to_categorical(dependency_level, dataset_name))
             # test:
 
-            if column_selection == 'single':
+            # if column_selection == 'single':
 
-                rules = [src + " -> " + trg for src in src_list]
-                key_response_pairs = pd.DataFrame(columns=['id', 'key'] + rules) 
-                key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
+            #     rules = [src + " -> " + trg for src in src_list]
+            #     key_response_pairs = pd.DataFrame(columns=['id', 'key'] + rules) 
+            #     key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
 
-                for src in src_list:
-                    rule = src + " -> " + trg
-                    apply_examples_df = example_generator(method, column_selection, df, src, trg, example_method, example_rows, number_of_examples, examples_random_seed)
-                    # print("Selected Dataframe: ")
+            #     for src in src_list:
+            #         rule = src + " -> " + trg
+            #         # apply_examples_df = example_generator(method, column_selection, df, src, trg, example_method, example_rows, number_of_examples, examples_random_seed)
+            #         # print("Selected Dataframe: ")
                     # print(apply_examples_df.head(10))
                     # key_response_pairs = run_models(method, model, df, key_response_pairs, rule, samples, apply_examples_df)
             
-            elif column_selection == 'multi':
-                rule = str(src_list) + ' -> ' + trg
-                key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
-                key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
-                apply_examples_df = example_generator(method, column_selection, df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed)
+            #elif column_selection == 'multi':
+            rule = str(src_list) + ' -> ' + trg
+            # key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
+            # key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
+            # apply_examples_df = example_generator(method, column_selection, df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed)
         
         elif method == 'ALL':
             rule = 'ALL' + ' -> ' + trg
-            key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
-            key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
-            apply_examples_df = example_generator(method, column_selection, df, None, trg, example_method, example_rows, number_of_examples, examples_random_seed)
+            # key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
+            # key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
+            # apply_examples_df = example_generator(method, column_selection, df, None, trg, example_method, example_rows, number_of_examples, examples_random_seed)
             
-        print("Selected Dataframe: ")
-        print(apply_examples_df.head(10))
-    
-        key_response_pairs = run_models(method, model, df, trg, key_response_pairs, rule, samples, apply_examples_df)
+        # print("Selected Dataframe: ")
+        # print(apply_examples_df.head(10))
+
+        key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
+        key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
+        key_response_pairs = run_models(config, df, src_list, trg, key_response_pairs, rule, samples)
 
         res = evaluate(key_response_pairs, evaluate_methods)
 
