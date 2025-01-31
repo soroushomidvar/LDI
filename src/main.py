@@ -14,29 +14,83 @@ def DI(config):
     
     repeat = config.get("repeat")
     result_path = os.path.join(RES_PATH, config.get("result_path"))
-    for i in range(repeat):
-        df = data_imputation(config)
-
-        if not os.path.exists(result_path):
-            # Write the first sheet if the file does not exist
-            with pd.ExcelWriter(result_path, mode='w', engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name=f'Run {i+1}', index=False)
-        else:
-            # Append to the existing file
-            with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name=f'Run {i+1}', index=False)
-        
-        print("\nResult Dataframe: ")
-        print(df.head())
     
-    #save config
-    flat_data = flatten_json(config)
-    config_df = pd.DataFrame(flat_data.items(), columns=["Key", "Value"])
-    with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
-                config_df.to_excel(writer, sheet_name=f'config', index=False)
+    dfs = []
+    for i in range(repeat):
+        df = data_imputation(config, i)
+        if df is not None:
+            df = add_accuracy_row(df)
+            dfs.append(df)
+            
+            if not os.path.exists(result_path):
+            # Write the first sheet if the file does not exist
+                with pd.ExcelWriter(result_path, mode='w', engine='openpyxl') as writer:
+                    df.to_excel(writer, sheet_name=f'Run {i+1}', index=False)
+            else:
+                # Append to the existing file
+                with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
+                    df.to_excel(writer, sheet_name=f'Run {i+1}', index=False)
+            
+            print("\nResult Dataframe: ")
+            print(df.head())
+            
+    
+    if dfs:
+        #save results
+        accuracy_stats_df = compute_accuracy_stats(dfs)
+        with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
+                    accuracy_stats_df.to_excel(writer, sheet_name=f'Results', index=False)
+
+        #save config
+        flat_data = flatten_json(config)
+        config_df = pd.DataFrame(flat_data.items(), columns=["Key", "Value"])
+        with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
+                    config_df.to_excel(writer, sheet_name=f'Config', index=False)
     
     #df.to_csv(os.path.join(RES_PATH, config.get("result_path")), index=False)
+
+def add_accuracy_row(df):
+
+    # Identify non-metric columns (first three are always 'id', 'key', and a third one that may change)
+    non_metric_cols = df.columns[:3]
+    metric_cols = df.columns[3:]  # All remaining columns are metrics
+
+    # Compute accuracy for metric columns
+    accuracy_row = df[metric_cols].mean().to_frame().T  # Compute mean (accuracy) and convert to DataFrame
+
+    # Add placeholders for non-metric columns
+    for col in non_metric_cols:
+        accuracy_row[col] = "Accuracy" if col == "id" else ""
+
+    # Ensure column order is preserved
+    accuracy_row = accuracy_row[df.columns]
+
+    # Append accuracy row to DataFrame
+    return pd.concat([df, accuracy_row], ignore_index=True)
+ 
+
+def compute_accuracy_stats(dfs):
+    # Extract metric column names (assuming all DataFrames have the same structure)
+    metric_cols = dfs[0].columns[3:]  # Exclude 'id', 'key', and the third column
     
+    # Initialize dictionary to store accuracies for each metric
+    accuracies_dict = {col: [] for col in metric_cols}
+
+    # Extract accuracy values from each DataFrame
+    for df in dfs:
+        accuracy_row = df.iloc[-1]  # The last row contains accuracy values
+        for col in metric_cols:
+            accuracies_dict[col].append(float(accuracy_row[col]))  # Convert to float
+    
+    # Compute mean and standard deviation for each metric
+    accuracy_stats = {
+        col: f"{np.mean(accuracies):.3f} ± {np.std(accuracies, ddof=1):.3f}"
+        for col, accuracies in accuracies_dict.items()
+    }
+
+    # Convert to DataFrame with a single row
+    return pd.DataFrame([accuracy_stats])
+
 
 def flatten_json(y, prefix=""):
     # Normalize and flatten the JSON data for Excel

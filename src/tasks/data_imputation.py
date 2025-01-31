@@ -4,6 +4,7 @@ from tools.data_handler import *
 from tools.entity_recognition import *
 from tools.sketch_generator import *
 from tools.dependency_finder import *
+from tools.knn_finder import *
 import json
 import string
 import pandas as pd
@@ -26,6 +27,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
 import ast
 from sklearn.impute import SimpleImputer
 import unicodedata
@@ -66,7 +68,6 @@ def preprocessing(dataset_name, df):
     #     rest = df[PHONE_DATASET_CONSTANTS.VALUE['REST']]
 
     return key, rest, df
-
 
 def rule_generator_old(dataset_name, rest, df, shot_number, method='random', target_row=-1, annotation='GPT 3.5'):
     prompt = ''
@@ -122,7 +123,6 @@ def rule_generator_old(dataset_name, rest, df, shot_number, method='random', tar
 
     return prompt, serialized_target_row, named_entities
 
-
 def sampling(df, sample_size, apply_random_seed):
     if sample_size is None:
         samples = np.arange(len(df))  # all data
@@ -132,19 +132,25 @@ def sampling(df, sample_size, apply_random_seed):
             np.arange(len(df)-1), size=sample_size, replace=False)
     return samples
 
-
-def example_generator(method, df, src, trg, example_method, example_rows, examples_number, random_seed, sample):
-    if examples_number > df[trg].nunique():
+def example_generator(method, test_df, train_df, src, trg, example_method, example_rows, examples_number, random_seed, sample):
+    if examples_number > train_df[trg].nunique():
         raise ValueError(
             "The number of unique examples requested exceeds the number of unique values in the trg column.")
-    
+
+    columns=[]
     if method == 'ALL':
-        unique_examples = pd.DataFrame(columns=df.columns)
+        columns= train_df.columns
+        # unique_examples = pd.DataFrame(columns=train_df.columns)
     if method == 'LCS':
+        columns = src + [trg]
         # if column_selection == 'single':
         #     unique_examples = pd.DataFrame(columns = [src, trg])
         # elif column_selection == 'multi':
-        unique_examples = pd.DataFrame(columns = src + [trg])
+    unique_examples = pd.DataFrame(columns = columns)
+
+    if example_method == "similarity":
+        columns_without_trg = pd.Index([col for col in columns if col != trg])
+        example_rows, _ = find_top_k_similar_rows(test_df, train_df, sample, examples_number, columns_without_trg)
 
     # unique_examples = pd.DataFrame(columns=df.columns if method == 'ALL' else [src, trg])
     selected_trg_values = set()
@@ -158,41 +164,30 @@ def example_generator(method, df, src, trg, example_method, example_rows, exampl
 
         #random_index = np.random.choice(df.index)
         if example_method == "random":
-            i = rng.choice(df.index)
-        elif example_method == "manual":
+            i = rng.choice(train_df.index)
+        elif example_method == "manual" or example_method == "similarity":
             i = example_rows[k]
             k += 1
-        # TODO : elif example_method == "similarity":
 
-
-
-
+        # print(f"Trying to access row {i} and column {trg}")
+        # print(train_df.iloc[i])
         # Get the trg value of the randomly selected row
-        trg_value = df.loc[i, trg]
+        trg_value = train_df.iloc[i][trg] #train_df.loc[i, trg]
 
         # If the trg value has not been selected before, add the row to unique_examples
-        if example_method == "manual" or trg_value not in selected_trg_values:
+        if example_method == "manual" or example_method == "similarity" or trg_value not in selected_trg_values:
             selected_trg_values.add(trg_value)
             if method == 'LCS':
                 # if column_selection == 'single':
                 #     selected_row = df.loc[[i], [src, trg]]
                 # elif column_selection == 'multi':
-                selected_row = df.loc[[i], src + [trg]]
+                selected_row = train_df.iloc[i, train_df.columns.get_indexer(src + [trg])] #train_df.loc[[i], src + [trg]]
             elif method == 'ALL':
-                selected_row = df.loc[[i], :] 
+                selected_row = train_df.iloc[i, :] #train_df.loc[[i], :] 
+            selected_row = selected_row.to_frame().T
             unique_examples = pd.concat([unique_examples, selected_row])
 
     return unique_examples.reset_index(drop=True)
-
-
-# def train_word2vec_model(text_data):
-#     """Train a Word2Vec model on the given text data."""
-#     tokenized_text = [text.split()
-#                       for text in text_data]  # Simple tokenization
-#     model = Word2Vec(sentences=tokenized_text, vector_size=50,
-#                      window=5, min_count=1, workers=4)
-#     return model
-
 
 def text_to_vector(text, model):
     """Convert text to a fixed-size vector using the provided Word2Vec model."""
@@ -203,7 +198,6 @@ def text_to_vector(text, model):
     # Average the vectors
     vector = np.mean(vectors, axis=0)
     return vector
-
 
 def dependency_finder(method, df_main, target_col, p, q):
     
@@ -230,7 +224,6 @@ def dependency_finder(method, df_main, target_col, p, q):
         for column in df.columns:
             rels[column] = -1
     return rels  # feature_importance_dict
-
 
 def dependency_finder_combinations_random_forest(df_main, target_col):
     df = df_main.copy()
@@ -275,7 +268,6 @@ def dependency_finder_combinations_random_forest(df_main, target_col):
         feature_combinations, accuracy_scores)}
 
     return combination_importance_dict
-
 
 def dependency_finder_combinations_decision_tree(df_main, target_col):
     df = df_main.copy()
@@ -516,82 +508,6 @@ def entity_extractor(df, atomic_status, sample_size, threshold):
     return new_df
 
 
-# def is_atomic(df, sample_size):
-#     if sample_size is None:
-#         sampled_df = df
-#     else:
-#         sampled_df = df.sample(n=sample_size)
-
-#     atomic_status = []
-
-#     for column in sampled_df.columns:
-#         column_atomic = True
-
-#         for value in sampled_df[column]:
-#             entity_types = named_entity_recognizer(str(value), "GPT 3.5")
-#             entity_types_list = ast.literal_eval(str(entity_types))
-#             if len(entity_types_list) > 1:
-#                 column_atomic = False
-#                 break
-
-#         atomic_status.append(column_atomic)
-
-#     return atomic_status
-
-
-# def dataframe_entity_type_detection(df, sample_size, threshold):
-#     atomic_status = is_atomic(df, sample_size)
-
-#     if sample_size is None:
-#         df = df
-#     else:
-#         df = df.sample(n=sample_size)
-
-#     entity_results = {column: [] for column in df.columns}
-
-#     for column in df.columns:
-#         # if not atomic_status[df.columns.get_loc(column)]:
-#         for value in df[column]:
-#             entity_types_str = named_entity_recognizer(
-#                 str(value), "GPT 3.5")
-#             print(entity_types_str)
-#             try:
-#                 entity_types = ast.literal_eval(entity_types_str)
-#             except:
-#                 entity_types = None
-
-#             entity_results[column].append(entity_types)
-
-#     new_columns = {}
-
-#     for col_idx, column in enumerate(df.columns):
-#         col_data = df[column]
-#         entity_counter = Counter()
-
-#         if atomic_status[col_idx]:
-#             for entity_types in entity_results[column]:
-#                 entity_counter.update(entity_types)
-
-#             if entity_counter:
-#                 majority_entity = entity_counter.most_common(1)[0][0]
-#                 new_col_name = f"{column}[{majority_entity}]"
-#                 new_columns[new_col_name] = col_data
-#         else:
-#             if entity_results[column]:
-#                 for entities_list in entity_results[column]:
-#                     for entity in entities_list:
-#                         entity_counter[entity] += 1
-
-#                 for entity, count in entity_counter.items():
-#                     if count / len(entity_results[column]) > threshold:
-#                         new_col_name = f"{column}[{entity}]"
-#                         new_col_data = [value if entity in entities else None for value, entities in zip(
-#                             col_data, entity_results[column])]
-#                         new_columns[new_col_name] = new_col_data
-
-#     return pd.DataFrame(new_columns)
-
-
 def mpping_handler(method, rule, trg, model, examples, sample):
 
     source_columns = [col for col in examples.columns if col != trg] #examples.columns[:-1]  # All columns except the last one
@@ -618,7 +534,7 @@ def mpping_handler(method, rule, trg, model, examples, sample):
     return response
 
 
-def run_models(config, df, src_list, trg, key_response_pairs, rule, samples):
+def run_models(config, test_df, train_df, src_list, trg, key_response_pairs, rule, samples, run_number):
 
     method = config.get("dependency_finder", {}).get("method")
     model = config.get("model")
@@ -626,7 +542,7 @@ def run_models(config, df, src_list, trg, key_response_pairs, rule, samples):
     example_method = config.get("examples", {}).get("method")
     example_rows = config.get("examples", {}).get("rows")
     number_of_examples = config.get("examples", {}).get("number_of_examples")
-    examples_random_seed = config.get("examples", {}).get("random_seed")
+    examples_random_seed = config.get("examples", {}).get("random_seed") + run_number
 
     
     for sample in samples:
@@ -634,7 +550,7 @@ def run_models(config, df, src_list, trg, key_response_pairs, rule, samples):
         # if method == 'LCS' and column_selection == 'single':
         #     apply_examples_df = example_generator(method, column_selection, df, src, trg, example_method, example_rows, number_of_examples, examples_random_seed)
         # if method == 'LCS': #and column_selection == 'multi':
-        examples = example_generator(method, df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed, sample)
+        examples = example_generator(method, test_df, train_df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed, sample)
         # elif method == 'ALL':
         #     apply_examples_df = example_generator(method, df, None, trg, example_method, example_rows, number_of_examples, examples_random_seed)
         
@@ -642,7 +558,7 @@ def run_models(config, df, src_list, trg, key_response_pairs, rule, samples):
         print(examples.head(10))
 
         value = mpping_handler(
-            method, rule, trg, model, examples, get_sample_by_row_number(df, sample))
+            method, rule, trg, model, examples, get_sample_by_row_number(test_df, sample))
         
         key_response_pairs.loc[key_response_pairs['id']
                                == sample, rule] = value  # detect_value_from_response(rule)
@@ -691,8 +607,9 @@ def group_sampling(df, trg, m, n):
 
     # Check if we have enough groups to sample from
     if len(eligible_groups) < m:
-        raise ValueError(
-            f"Not enough groups with at least {n} rows. Only found {len(eligible_groups)} such groups.")
+        m = len(eligible_groups)
+        # raise ValueError(
+        #     f"Not enough groups with at least {n} rows. Only found {len(eligible_groups)} such groups.")
 
     # Randomly sample m groups
     sampled_groups = pd.Series(eligible_groups).sample(m).tolist()
@@ -770,7 +687,6 @@ def flexible_match(key_value, col_value):
     return 0
 
 
-
 def evaluate(key_response_df, methods):
     res = key_response_df.copy()
     methods = set(methods) 
@@ -806,7 +722,7 @@ def evaluate(key_response_df, methods):
     return res
 
 # def data_imputation(dataset_name='', path='', models=[], number_of_rows=100, number_of_examples=3, sample_size=None, few_shot_sampling_method='random', shot_number=3, annotation='GPT 3.5'):
-def data_imputation(config):
+def data_imputation(config, run_number):
     
     dataset_name = config.get("dataset", {}).get("name")
     dataset_path = os.path.join(DATA_PATH,DATASETS[dataset_name]['REL_PATH'])
@@ -861,6 +777,20 @@ def data_imputation(config):
 
         _, _, df = preprocessing(dataset_name, df)
 
+        train_ratio = config.get("dataset_partition", 80).get("train_ratio")
+        number_of_test_rows = config.get("dataset_partition", {}).get("number_of_test_rows")
+        dataset_partition_random_seed = config.get("dataset_partition", {}).get("random_seed") + run_number
+
+        train_df, test_df = train_test_split(df, train_size=train_ratio, random_state=dataset_partition_random_seed)
+        
+        print("Train Dataframe: ")
+        print(train_df.head(10))
+        print("# Rows: " + str(len(train_df)))
+
+        print("Test Dataframe: ")
+        print(test_df.head(10))
+        print("# Rows: " + str(len(test_df)))
+
         sample_method = config.get("sampling", {}).get("method")
         sample_number = config.get("sampling", {}).get("number_of_samples")
         sample_m = config.get("sampling", {}).get("m")
@@ -868,9 +798,9 @@ def data_imputation(config):
 
         if sample_method is not None:
             if sample_method == "Random Sampling":
-                sampled_df = df.sample(n=sample_number)
+                sampled_df = train_df.sample(n=sample_number)
             elif sample_method == "Group Sampling":
-                sampled_df = group_sampling(df, trg, sample_m, sample_n)
+                sampled_df = group_sampling(train_df, trg, sample_m, sample_n)
 
         _, _, df = preprocessing(dataset_name, df)
 
@@ -882,41 +812,42 @@ def data_imputation(config):
         length_limit = config.get("column_length_limit")
         sampled_df, avg_len = drop_long_columns(sampled_df, length_limit)
         # print(avg_len)
-        print(sampled_df.columns)
+        # print(sampled_df.columns)
 
         # Which column(s) are atomic?
-        ner_method = config.get("ner", {}).get("method")
-        ner_number_of_examples = config.get(
-            "ner", {}).get("number_of_examples")
-        ner_atomicity_threshold = config.get(
-            "ner", {}).get("atomicity_threshold")
-        atomicity_status = is_atomic(
-            sampled_df, ner_method, ner_number_of_examples, ner_atomicity_threshold)
+        # ner_method = config.get("ner", {}).get("method")
+        # ner_number_of_examples = config.get(
+        #     "ner", {}).get("number_of_examples")
+        # ner_atomicity_threshold = config.get(
+        #     "ner", {}).get("atomicity_threshold")
+        # atomicity_status = is_atomic(
+        #     sampled_df, ner_method, ner_number_of_examples, ner_atomicity_threshold)
 
-        print("\nNER Method: " + str(ner_method))
-        if ner_method is not None: print("Columns Atomicity Status: " + str(atomicity_status) + "\n")
+        # print("\nNER Method: " + str(ner_method))
+        # if ner_method is not None: print("Columns Atomicity Status: " + str(atomicity_status) + "\n")
 
         # entity detection
-        entity_detection_threshold = config.get(
-            "ner", {}).get("entity_detection_threshold")
-        sampled_df = entity_extractor(
-            sampled_df, atomicity_status, ner_number_of_examples, entity_detection_threshold)
+        # entity_detection_threshold = config.get(
+        #     "ner", {}).get("entity_detection_threshold")
+        # sampled_df = entity_extractor(
+        #     sampled_df, atomicity_status, ner_number_of_examples, entity_detection_threshold)
 
         method = config.get("dependency_finder", {}).get("method")
         # column_selection = config.get("dependency_finder", {}).get("column_selection")
         number_of_rules = config.get("dependency_finder", {}).get("number_of_rules", 3)
         p = config.get("dependency_finder", {}).get("inner_threshold")
         q = config.get("dependency_finder", {}).get("outer_threshold")
-
-        
-        apply_rows = config.get("apply", {}).get("number_of_rows")
-        apply_random_seed = config.get("apply", {}).get("random_seed")
         evaluate_methods = config.get("evaluate", {}).get("methods")
-        samples = sampling(df, apply_rows, apply_random_seed)
+
+        samples = sampling(test_df, number_of_test_rows, dataset_partition_random_seed)
 
         # train:
+        src_list = None
         if method == 'LCS':
             src_list = rule_generator(dataset_name, sampled_df, trg, method, p, q, number_of_rules)
+            if not src_list: return None
+            # assert src_list, "No dependencies found!"
+
             # result
             print(dependency_level_to_categorical(dependency_level, dataset_name))
             # test:
@@ -950,8 +881,8 @@ def data_imputation(config):
         # print(apply_examples_df.head(10))
 
         key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
-        key_response_pairs = fill_keys(df, samples, trg, key_response_pairs)
-        key_response_pairs = run_models(config, df, src_list, trg, key_response_pairs, rule, samples)
+        key_response_pairs = fill_keys(test_df, samples, trg, key_response_pairs)
+        key_response_pairs = run_models(config, test_df, train_df, src_list, trg, key_response_pairs, rule, samples, run_number)
 
         res = evaluate(key_response_pairs, evaluate_methods)
 
