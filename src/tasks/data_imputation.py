@@ -5,6 +5,7 @@ from tools.entity_recognition import *
 from tools.sketch_generator import *
 from tools.dependency_finder import *
 from tools.knn_finder import *
+from tools.comparison_metrics import *
 import json
 import string
 import pandas as pd
@@ -35,38 +36,11 @@ import re
 
 
 def preprocessing(dataset_name, df):
-
     if dataset_name == DATASETS[dataset_name]['NAME']:
         df = df[DATASETS[dataset_name]['ALL_COLUMNS']]
         key = df[DATASETS[dataset_name]['KEY']]
         rest_cols = [x for x in DATASETS[dataset_name]['ALL_COLUMNS'] if x not in DATASETS[dataset_name]['KEY']]
         rest = df[rest_cols]
-
-    # elif dataset_name == DATASETS['restaurant']['NAME']:
-    #     df = df[DATASETS['restaurant']['ALL_COLUMNS']]
-    #     key = df[DATASETS['restaurant']['KEY']]
-    #     #rest = df[RESTAURANT_DATASET_CONSTANTS.VALUE['REST']]
-
-    # elif dataset_name == DATASETS['flipkart']['NAME']:
-    #     df = df[DATASETS['flipkart']['ALL_COLUMNS']]
-    #     key = df[DATASETS['flipkart']['KEY']]
-    #     #rest = df[FLIPKART_DATASET_CONSTANTS.VALUE['REST']]
-
-    # elif dataset_name == DATASETS['flipkart']['NAME']:
-    #     df = df[ZOMATO_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
-    #     key = df[ZOMATO_DATASET_CONSTANTS.VALUE['KEY']]
-    #     rest = df[ZOMATO_DATASET_CONSTANTS.VALUE['REST']]
-
-    # elif dataset_name == WALMART_DATASET_CONSTANTS.VALUE['NAME']:
-    #     df = df[WALMART_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
-    #     key = df[WALMART_DATASET_CONSTANTS.VALUE['KEY']]
-    #     rest = df[WALMART_DATASET_CONSTANTS.VALUE['REST']]
-    
-    # elif dataset_name == PHONE_DATASET_CONSTANTS.VALUE['NAME']:
-    #     df = df[PHONE_DATASET_CONSTANTS.VALUE['ALL_COLUMNS']]
-    #     key = df[PHONE_DATASET_CONSTANTS.VALUE['KEY']]
-    #     rest = df[PHONE_DATASET_CONSTANTS.VALUE['REST']]
-
     return key, rest, df
 
 def rule_generator_old(dataset_name, rest, df, shot_number, method='random', target_row=-1, annotation='GPT 3.5'):
@@ -147,14 +121,23 @@ def example_generator(method, test_df, train_df, src, trg, example_method, examp
         #     unique_examples = pd.DataFrame(columns = [src, trg])
         # elif column_selection == 'multi':
     unique_examples = pd.DataFrame(columns = columns)
+    train_df = train_df.reset_index(drop=True) # Ensure sequential indices!
 
     if example_method == "similarity":
         columns_without_trg = pd.Index([col for col in columns if col != trg])
-        example_rows, _ = find_top_k_similar_rows(test_df, train_df, sample, examples_number, columns_without_trg)
+        example_rows, _ = find_top_k_similar_rows(test_df, train_df, sample, examples_number, columns_without_trg, trg, False)
+    
+    if example_method == "diverse_similarity":
+        columns_without_trg = pd.Index([col for col in columns if col != trg])
+        example_rows, _ = find_top_k_similar_rows(test_df, train_df, sample, examples_number, columns_without_trg, trg, True)
+
 
     # unique_examples = pd.DataFrame(columns=df.columns if method == 'ALL' else [src, trg])
     selected_trg_values = set()
     rng = random.Random(random_seed)
+
+    if example_method == "random":
+        example_rows = rng.sample(list(train_df.index), examples_number)
 
     k = 0 # manual method
     while len(unique_examples) < examples_number:
@@ -163,19 +146,20 @@ def example_generator(method, test_df, train_df, src, trg, example_method, examp
         #random_index = random.choice(df.index)
 
         #random_index = np.random.choice(df.index)
-        if example_method == "random":
+        if example_method == "diversity":
             i = rng.choice(train_df.index)
-        elif example_method == "manual" or example_method == "similarity":
+
+        elif example_method == "manual" or example_method == "random" or example_method == "similarity" or example_method == "diverse_similarity":
             i = example_rows[k]
             k += 1
 
         # print(f"Trying to access row {i} and column {trg}")
         # print(train_df.iloc[i])
         # Get the trg value of the randomly selected row
-        trg_value = train_df.iloc[i][trg] #train_df.loc[i, trg]
+        trg_value = train_df.loc[i, trg]# train_df.iloc[i][trg] #train_df.loc[i, trg]
 
         # If the trg value has not been selected before, add the row to unique_examples
-        if example_method == "manual" or example_method == "similarity" or trg_value not in selected_trg_values:
+        if example_method == "manual" or example_method == "similarity" or example_method == "random" or trg_value not in selected_trg_values:
             selected_trg_values.add(trg_value)
             if method == 'LCS':
                 # if column_selection == 'single':
@@ -212,14 +196,12 @@ def dependency_finder(method, df_main, target_col, p, q):
         # Encode categorical columns, including the target column
         for column in df.columns:
             if column != target_col:  # df[column].dtype == 'object' and
-                rel, freq, res = is_dependant(df[[column, target_col]], p, q)
+                rel, res = is_dependant(df[[column, target_col]], p, q)
                 if (rel):
-                    rels[column] = freq
-                    print("\n" + str(column) + ": " + "\nStatus: " + str(rel) +
-                          "\nFrequency: " + str(freq) + "\nLCSs: " + str(res))
+                    rels[column] = 1
+                    print("\n" + str(column) + ": " + "\nStatus: " + str(rel) + "\nLCSs: " + str(res)) #  "\nFrequency: " + str(freq) +
                 else:
-                    print("\n" + str(column) + ": " + "\nStatus: " + str(rel) +
-                          "\nFrequency: " + str(freq))
+                    print("\n" + str(column) + ": " + "\nStatus: " + str(rel)) # "\nFrequency: " + str(freq)
     elif method == None: 
         for column in df.columns:
             rels[column] = -1
@@ -534,6 +516,26 @@ def mpping_handler(method, rule, trg, model, examples, sample):
     return response
 
 
+def example_sampling(train_df, trg, examples_sample_size, examples_random_seed):
+    unique_trg_values = train_df[trg].unique()
+    
+    if len(unique_trg_values) > examples_sample_size:
+        # Randomly select `examples_sample_size` unique trg values
+        selected_trg_values = pd.Series(unique_trg_values).sample(n=examples_sample_size, random_state=examples_random_seed)
+        # Pick one row for each selected trg value
+        sampled_df = train_df[train_df[trg].isin(selected_trg_values)].groupby(trg).sample(n=1, random_state=examples_random_seed)
+    else:
+        # Pick one row from each unique trg value
+        sampled_df = train_df.groupby(trg).sample(n=1, random_state=examples_random_seed)
+        remaining_size = examples_sample_size - len(sampled_df)
+        
+        if remaining_size > 0:
+            # Sample additional rows randomly to reach the desired sample size
+            additional_samples = train_df.drop(sampled_df.index).sample(n=remaining_size, random_state=examples_random_seed, replace=False)
+            sampled_df = pd.concat([sampled_df, additional_samples])
+    
+    return sampled_df
+
 def run_models(config, test_df, train_df, src_list, trg, key_response_pairs, rule, samples, run_number):
 
     method = config.get("dependency_finder", {}).get("method")
@@ -541,16 +543,23 @@ def run_models(config, test_df, train_df, src_list, trg, key_response_pairs, rul
     #column_selection = config.get("dependency_finder", {}).get("column_selection")
     example_method = config.get("examples", {}).get("method")
     example_rows = config.get("examples", {}).get("rows")
+    examples_sample_size = config.get("examples", {}).get("sample_size")
     number_of_examples = config.get("examples", {}).get("number_of_examples")
     examples_random_seed = config.get("examples", {}).get("random_seed") + run_number
-
     
+    if examples_sample_size == None:
+        sampled_train_df = train_df
+    else:
+        sampled_train_df = example_sampling(train_df, trg, examples_sample_size, examples_random_seed)
+
+    #sampled_train_df = train_df.sample(n=examples_sample_size, frac=None if examples_sample_size else 1, random_state=examples_random_seed)    
+  
     for sample in samples:
 
         # if method == 'LCS' and column_selection == 'single':
         #     apply_examples_df = example_generator(method, column_selection, df, src, trg, example_method, example_rows, number_of_examples, examples_random_seed)
         # if method == 'LCS': #and column_selection == 'multi':
-        examples = example_generator(method, test_df, train_df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed, sample)
+        examples = example_generator(method, test_df, sampled_train_df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed, sample)
         # elif method == 'ALL':
         #     apply_examples_df = example_generator(method, df, None, trg, example_method, example_rows, number_of_examples, examples_random_seed)
         
@@ -598,7 +607,7 @@ def print_dataframe_info(df):
     df.info()
 
 
-def group_sampling(df, trg, m, n):
+def group_sampling(df, trg, m, n, seed):
     # Group the dataframe by the target column
     grouped = df.groupby(trg)
 
@@ -612,14 +621,14 @@ def group_sampling(df, trg, m, n):
         #     f"Not enough groups with at least {n} rows. Only found {len(eligible_groups)} such groups.")
 
     # Randomly sample m groups
-    sampled_groups = pd.Series(eligible_groups).sample(m).tolist()
+    sampled_groups = pd.Series(eligible_groups).sample(m, random_state=seed).tolist()
 
     # Initialize an empty list to hold the samples
     samples = []
 
     # For each sampled group, randomly select n rows
     for group_name in sampled_groups:
-        group_sample = grouped.get_group(group_name).sample(n)
+        group_sample = grouped.get_group(group_name).sample(n, random_state=seed)
         samples.append(group_sample)
 
     # Concatenate all the sampled groups to form the final dataframe
@@ -700,82 +709,121 @@ def evaluate(key_response_df, methods):
                     lambda row: 1 if str(row['key']).strip().lower() == str(row[col]).strip().lower() else 0, 
                     axis=1
                 )
-
-            if 'substr_match' in methods:
-                # Add a column for substring match
-                substr_col_name = f"substr_match:{col}"
-                res[substr_col_name] = res.apply(
-                    lambda row: 1 if (
-                        str(row['key']).strip().lower() in str(row[col]).strip().lower() or
-                        str(row[col]).strip().lower() in str(row['key']).strip().lower()
-                    ) else 0, 
-                    axis=1
-                )
-            if 'flexible_match' in methods:
+            # if 'substr_match' in methods:
+            #     # Add a column for substring match
+            #     substr_col_name = f"substr_match:{col}"
+            #     res[substr_col_name] = res.apply(
+            #         lambda row: 1 if (
+            #             str(row['key']).strip().lower() in str(row[col]).strip().lower() or
+            #             str(row[col]).strip().lower() in str(row['key']).strip().lower()
+            #         ) else 0, 
+            #         axis=1
+            #     )
+            # if 'flexible_match' in methods:
+            #     # Add a column for chunk match
+            #     chunk_col_name = f"flexible_match:{col}"
+            #     res[chunk_col_name] = res.apply(
+            #         lambda row: flexible_match(row['key'], row[col]), 
+            #         axis=1
+            #     )
+            if 'bleu_score' in methods:
                 # Add a column for chunk match
-                chunk_col_name = f"flexible_match:{col}"
+                chunk_col_name = f"bleu:{col}"
                 res[chunk_col_name] = res.apply(
-                    lambda row: flexible_match(row['key'], row[col]), 
+                    lambda row: compute_bleu(row['key'].strip().lower(), row[col].strip().lower()), 
                     axis=1
                 )
+            if 'rouge_score' in methods:
+                # Add columns for each ROUGE-1 metric
+                res[f"rouge_p:{col}"] = res.apply(
+                    lambda row: compute_rouge(row['key'].strip().lower(), row[col].strip().lower())["P"],
+                    axis=1
+                )
+
+                res[f"rouge_r:{col}"] = res.apply(
+                    lambda row: compute_rouge(row['key'].strip().lower(), row[col].strip().lower())["R"],
+                    axis=1
+                )
+
+                res[f"rouge_f1:{col}"] = res.apply(
+                    lambda row: compute_rouge(row['key'].strip().lower(), row[col].strip().lower())["F1"],
+                    axis=1
+                )
+
 
     return res
+
+
+def print_average_column_length(df):
+    avg_lengths = {}
+    total_sum = 0
+    
+    for column in df.columns:
+        df[column] = df[column].astype(str)  # Convert all values to string
+        avg_length = df[column].apply(len).mean()  # Compute average length
+        avg_lengths[column] = avg_length
+        total_sum += avg_length
+    
+    print("Average length per column:")
+    for col, length in avg_lengths.items():
+        print(f"{col}: {length:.2f}")
+    
+    print(f"Total sum of average lengths: {total_sum:.2f}")
+
+def na_handler(df, na):
+    no_nan_df = df.copy()    
+    if na == "fill":
+        no_nan_df = no_nan_df.fillna("")
+    elif na == "drop":
+        no_nan_df.replace(["", "NULL", "-"], pd.NA, inplace=True)
+        no_nan_df.dropna(how="any", inplace=True)
+    return no_nan_df
+
+
+# def value_handler(dataset_name, df, trg):
+#     values = []
+#     if dataset_name == "phone_2":
+#         values = ["samsung", "nokia", "lg", "apple", "lenovo", "huawei", "amazon", "motorola", "blackberry", "asus", "zte", "acer", "blu", "google", "hp", "microsoft", "sony", "sanyo", "alcatel", "htc", "palm", "Pantech", "Atoah", "Mango Natural", "OnePlus", "OtterBox", "Pandaoo", "Pantech", "Plum", "Posh Mobile"]
+#     values = [item.lower() for item in values]
+#     return df[df[trg].isin(values)]
 
 # def data_imputation(dataset_name='', path='', models=[], number_of_rows=100, number_of_examples=3, sample_size=None, few_shot_sampling_method='random', shot_number=3, annotation='GPT 3.5'):
 def data_imputation(config, run_number):
     
     dataset_name = config.get("dataset", {}).get("name")
     dataset_path = os.path.join(DATA_PATH,DATASETS[dataset_name]['REL_PATH'])
-
-    # if dataset.lower() == "restaurant":
-    #     dataset_name = RESTAURANT_DATASET_CONSTANTS.VALUE['NAME']
-    #     dataset_path = os.path.join(
-    #         DATA_PATH, RESTAURANT_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    # elif dataset.lower() == "buy":
-    #     dataset_name = BUY_DATASET_CONSTANTS.VALUE['NAME']
-    #     dataset_path = os.path.join(
-    #         DATA_PATH, BUY_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    # elif dataset.lower() == "flipkart":
-    #     dataset_name = FLIPKART_DATASET_CONSTANTS.VALUE['NAME']
-    #     dataset_path = os.path.join(
-    #         DATA_PATH, FLIPKART_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    # elif dataset.lower() == "zomato":
-    #     dataset_name = ZOMATO_DATASET_CONSTANTS.VALUE['NAME']
-    #     dataset_path = os.path.join(
-    #         DATA_PATH, ZOMATO_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    # elif dataset.lower() == "walmart":
-    #     dataset_name = WALMART_DATASET_CONSTANTS.VALUE['NAME']
-    #     dataset_path = os.path.join(
-    #         DATA_PATH, WALMART_DATASET_CONSTANTS.VALUE['REL_PATH'])
-    # elif dataset.lower() == "phone":
-    #     dataset_name = PHONE_DATASET_CONSTANTS.VALUE['NAME']
-    #     dataset_path = os.path.join(
-    #         DATA_PATH, PHONE_DATASET_CONSTANTS.VALUE['REL_PATH'])
-
+    trg = config.get("dataset", {}).get("target_column")
+    na = config.get("na")
     model = config.get("model")
-    # model_output_names = [item + " rule" for item in models]
 
     df = read_csv(dataset_path)
 
     if df is not None:
 
+        print(len(df))
+        df = na_handler(df, na)
+        print(len(df))
+
         print_dataframe_info(df)
+
+        print_average_column_length(df)
 
         # Get number of unique values in each column
         unique_counts = df.nunique()
-        # Print the results
         print(unique_counts)
-        
-        # drop NaNs
-        #df = df.dropna()
-        df = df.fillna("")
 
         # to lowercase
         df = df.apply(lambda x: x.str.lower() if x.dtype == "object" else x) # to lowercase
+        
+        # filter rows with specific target values
+        # df = value_handler(dataset_name, df,trg)
 
-        trg = config.get("dataset", {}).get("target_column")
-
+        # preprocessing
         _, _, df = preprocessing(dataset_name, df)
+
+        df.replace(["", "NULL", "-"], pd.NA, inplace=True)
+        df.dropna(how="any", inplace=True)
+        print(len(df))
 
         train_ratio = config.get("dataset_partition", 80).get("train_ratio")
         number_of_test_rows = config.get("dataset_partition", {}).get("number_of_test_rows")
@@ -798,11 +846,11 @@ def data_imputation(config, run_number):
 
         if sample_method is not None:
             if sample_method == "Random Sampling":
-                sampled_df = train_df.sample(n=sample_number)
+                sampled_df = train_df.sample(n=sample_number, random_state=dataset_partition_random_seed)
             elif sample_method == "Group Sampling":
-                sampled_df = group_sampling(train_df, trg, sample_m, sample_n)
+                sampled_df = group_sampling(train_df, trg, sample_m, sample_n, dataset_partition_random_seed)
 
-        _, _, df = preprocessing(dataset_name, df)
+        # _, _, df = preprocessing(dataset_name, df)
 
         print("Sampling Method: " + str(sample_method) +
               " # Samples: " + str(len(sampled_df)))
@@ -845,7 +893,7 @@ def data_imputation(config, run_number):
         src_list = None
         if method == 'LCS':
             src_list = rule_generator(dataset_name, sampled_df, trg, method, p, q, number_of_rules)
-            if not src_list: return None
+            if len(src_list) == 0: return None
             # assert src_list, "No dependencies found!"
 
             # result

@@ -1,11 +1,12 @@
 {
     "task": "Data Imputation",
     "dataset": {
-        "name": "buy",
-        "target_column": "manufacturer"
+        "name": "phone_2",
+        "target_column": "Brand Name"
     },
     "model": "GPT Small",
-    "column_length_limit": 200,
+    "column_length_limit": 500,
+    "na": "drop",
     "repeat": 5,
     "sampling": {
         "method": "Group Sampling",
@@ -14,36 +15,28 @@
         "n": 10
     },
     "examples": {
-        "method": "similarity",
-        "number_of_examples": 3,
+        "method": "random",
+        "number_of_examples": 10,
         "random_seed": 42,
-        "rows": [
-            1,
-            2,
-            3
-        ]
-    },
-    "ner": {
-        "method": null,
-        "number_of_examples": 1,
-        "atomicity_threshold": 0.7,
-        "entity_detection_threshold": 0.5
+        "sample_size": 900,
+        "rows": []
     },
     "dependency_finder": {
-        "method": "LCS",
+        "method": "ALL",
         "number_of_rules": -1,
         "inner_threshold": 0.9,
         "outer_threshold": 0.9
     },
     "dataset_partition": {
-        "train_ratio": 0.8,
-        "number_of_test_rows": 3,
+        "train_ratio": 0.9,
+        "number_of_test_rows": 2,
         "random_seed": 42
     },
     "evaluate": {
         "methods": [
             "exact_match",
-            "substr_match"
+            "bleu_score",
+            "rouge_score"
         ]
     },
     "result_path": "res.xlsx",
