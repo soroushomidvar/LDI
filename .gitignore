@@ -2,7 +2,6 @@ baselines.xlsx
 src/constants/api.py
 src/test.py
 src/config.json
-data/
 res/
 XDIenv/
 
