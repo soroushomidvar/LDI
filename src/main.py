@@ -33,7 +33,7 @@ def DI(config):
             
             print("\nResult Dataframe: ")
             print(df.head())
-            
+    
     
     if dfs:
         #save results
