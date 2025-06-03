@@ -50,6 +50,6 @@ The config file is in JSON format. Below is a guide to each key:
 ---
 
 ## 📚 `Citation`
-If you have used the codes in this repository, we would appreciate it if you cite the relevant paper(s) for those parts:
+If you have used the codes in this repository, we would appreciate it if you cite the LDI paper:
 
 > TBD
