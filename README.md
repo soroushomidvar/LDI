@@ -1,0 +1,56 @@
+# 🧠 LDI: Localized Data Imputation
+
+**LDI** (Localized Data Imputation) is a method that uses LLMs to fill in missing values in tabular data, which improves both the **accuracy** and **explainability** of imputations by selecting only the attributes and examples can contribute to the prediction.
+
+---
+
+## ⚙️ How to Use the Config File
+
+The config file is in JSON format. Below is a guide to each key:
+
+### 🔧 Root-level Keys
+- `task`: Type of task (e.g., data imputation).
+- `model`: The LLM model to use (e.g., GPT, LLaMA).
+- `column_length_limit`: Ignore columns with high average length.
+- `na`: How to handle missing values during attribute selection.
+- `repeat`: Number of times to repeat the experiment.
+- `result_path`: Where to save the final results.
+- `output_path`: Where to save logs.
+
+### 📁 `dataset`
+- `name`: Dataset name.
+- `target_column`: The column that contains missing values (target attribute).
+
+### 📊 `sampling`
+- `method`: Sampling method for attribute selection.
+- `number_of_samples`: How many samples to take.
+- `m`: Number of groups.
+- `n`: Number of records per group.
+
+### 🧪 `examples`
+- `method`: How to choose examples (e.g., random).
+- `number_of_examples`: How many examples to use.
+- `random_seed`: Set a seed for reproducibility.
+- `sample_size`: Size of the pool to sample from.
+- `rows`: Specific row indices to use instead of random selection.
+
+### 🧠 `dependency_finder`
+- `method`: Method used for finding dependent attributes.
+- `number_of_rules`: Maximum number of rules to extract.
+- `inner_threshold`: Controls the in-group condition (`q` in the paper).
+- `outer_threshold`: Controls the across-group condition (`p` in the paper).
+
+### 🔀 `dataset_partition`
+- `train_ratio`: Ratio of training data.
+- `number_of_test_rows`: Number of test rows to evaluate.
+- `random_seed`: Seed for dataset shuffling.
+
+### 📈 `evaluate`
+- `methods`: Evaluation metrics to use (e.g., exact match, BLEU, ROUGE).
+
+---
+
+## 📚 `Citation`
+If you have used the codes in this repository, we would appreciate it if you cite the relevant paper(s) for those parts:
+
+> TBD
