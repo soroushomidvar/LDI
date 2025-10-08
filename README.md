@@ -22,7 +22,7 @@ The config file is in JSON format. Below is a guide to each key:
 
 ### 📊 `sampling`
 - `method`: Sampling method for attribute selection.
-- `number_of_samples`: How many samples to take.
+- `number_of_samples`: How many samples to take (for random sampling).
 - `m`: Number of groups.
 - `n`: Number of records per group.
 
