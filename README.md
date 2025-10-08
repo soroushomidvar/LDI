@@ -45,7 +45,7 @@ The config file is in JSON format. Below is a guide to each key:
 - `random_seed`: Seed for dataset shuffling.
 
 ### 📈 `evaluate`
-- `methods`: Evaluation metrics to use (e.g., exact match, BLEU, ROUGE).
+- `methods`: Evaluation metrics to use (e.g., `exact match`, `BLEU`, `ROUGE`).
 
 ---
 
