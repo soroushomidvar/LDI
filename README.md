@@ -35,7 +35,7 @@ The config file is in JSON format. Below is a guide to each key:
 
 ### 🧠 `dependency_finder`
 - `method`: Method used for finding dependent attributes.
-- `number_of_rules`: Maximum number of rules to extract.
+- `number_of_rules`: Maximum number of rules to extract (set to `-1` to remove the limit).
 - `inner_threshold`: Controls the in-group condition (`q` in the paper).
 - `outer_threshold`: Controls the across-group condition (`p` in the paper).
 
