@@ -10,7 +10,7 @@ The config file is in JSON format. Below is a guide to each key:
 
 ### 🔧 Root-level Keys
 - `task`: Type of task (e.g., data imputation).
-- `model`: The LLM model to use (e.g., GPT, LLaMA).
+- `model`: The LLM model to use (e.g., `GPT`, `LLaMA`).
 - `na`: How to handle missing values during attribute selection.
 - `repeat`: Number of times to repeat the experiment.
 - `result_path`: Where to save the final results.
