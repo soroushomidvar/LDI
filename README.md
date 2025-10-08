@@ -49,6 +49,22 @@ The config file is in JSON format. Below is a guide to each key:
 
 ---
 
+## ▶️ Installation & Running the Code
+
+Before running the code, make sure to install the required dependencies listed in **requirements.txt** .
+1. Install required packages:
+
+<pre> ```pip install -r requirements.txt ``` </pre>
+
+2. Edit the `config.json` file located next to `main.py` to set your parameters. Save the file.
+
+3. Run the program:
+
+<pre> ```python main.py``` </pre>
+
+
+---
+
 ## 📚 `Citation`
 If you have used the codes in this repository, we would appreciate it if you cite the LDI paper:
 
