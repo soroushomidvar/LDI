@@ -27,7 +27,7 @@ The config file is in JSON format. Below is a guide to each key:
 - `n`: Number of records per group (for `Group Sampling`).
 
 ### 🧪 `examples`
-- `method`: How to choose examples (e.g., random).
+- `method`: How to choose examples (e.g., `Random`).
 - `number_of_examples`: How many examples to use.
 - `random_seed`: Set a seed for reproducibility.
 - `sample_size`: Size of the pool to sample from.
