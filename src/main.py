@@ -16,11 +16,13 @@ def DI(config):
     result_path = os.path.join(RES_PATH, config.get("result_path"))
     
     dfs = []
+    times = [] 
     for i in range(repeat):
-        df = data_imputation(config, i)
+        df , t = data_imputation(config, i)
         if df is not None:
             df = add_accuracy_row(df)
             dfs.append(df)
+            times.append(t)
             
             if not os.path.exists(result_path):
             # Write the first sheet if the file does not exist
@@ -33,6 +35,9 @@ def DI(config):
             
             print("\nResult Dataframe: ")
             print(df.head())
+
+            print("Runtime: " + " | ".join(f"{phase}: {runtime:.3f}s" for phase, runtime in t.items()))
+
     
     
     if dfs:
@@ -40,6 +45,11 @@ def DI(config):
         accuracy_stats_df = compute_accuracy_stats(dfs)
         with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
                     accuracy_stats_df.to_excel(writer, sheet_name=f'Results', index=False)
+
+        #save runtime
+        time_avg = pd.DataFrame([pd.DataFrame(times).mean()])
+        with pd.ExcelWriter(result_path, mode='a', if_sheet_exists='new', engine='openpyxl') as writer:
+                    time_avg.to_excel(writer, sheet_name=f'Runtime', index=False)
 
         #save config
         flat_data = flatten_json(config)

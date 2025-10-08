@@ -33,6 +33,8 @@ import ast
 from sklearn.impute import SimpleImputer
 import unicodedata
 import re
+import time
+from typing import Dict, Any, Tuple
 
 
 def preprocessing(dataset_name, df):
@@ -129,7 +131,10 @@ def example_generator(method, test_df, train_df, src, trg, example_method, examp
     
     if example_method == "diverse_similarity":
         columns_without_trg = pd.Index([col for col in columns if col != trg])
+        start_time = time.time()
         example_rows, _ = find_top_k_similar_rows(test_df, train_df, sample, examples_number, columns_without_trg, trg, True)
+        end_time = time.time()
+        print("Time taken for finding similar examples: {:.6f} seconds".format(end_time - start_time))
 
 
     # unique_examples = pd.DataFrame(columns=df.columns if method == 'ALL' else [src, trg])
@@ -188,6 +193,8 @@ def dependency_finder(method, df_main, target_col, p, q):
     df = df_main.copy()
     rels = {}
 
+    start = time.time()
+
     if method == "LCS":
         # Check if the target column is categorical
         if df[target_col].dtype != 'object':
@@ -205,7 +212,11 @@ def dependency_finder(method, df_main, target_col, p, q):
     elif method == None: 
         for column in df.columns:
             rels[column] = -1
-    return rels  # feature_importance_dict
+    
+    end = time.time()
+    runtime = round(end - start, 3)
+
+    return rels, runtime  # feature_importance_dict
 
 def dependency_finder_combinations_random_forest(df_main, target_col):
     df = df_main.copy()
@@ -349,7 +360,7 @@ def rules_to_str(lst, key):
 
 def rule_generator(dataset_name, df, trg, method, p, q, number_of_rules=3):
 
-    dependency_values = dependency_finder(method, df, trg, p, q)
+    dependency_values, runtime = dependency_finder(method, df, trg, p, q)
 
     print("\nColumn Dependencies (Importance):")
     print(list(dependency_values.keys()))
@@ -361,7 +372,7 @@ def rule_generator(dataset_name, df, trg, method, p, q, number_of_rules=3):
     print("\nRule(s):")
     print(left_hand_columns_str)
 
-    return left_hand_columns
+    return left_hand_columns, runtime
 
 
 def fill_keys(df, samples, trg, key_response_pairs):
@@ -551,20 +562,27 @@ def run_models(config, test_df, train_df, src_list, trg, key_response_pairs, rul
         sampled_train_df = train_df
     else:
         sampled_train_df = example_sampling(train_df, trg, examples_sample_size, examples_random_seed)
+    
+    print("Selected dataframe for example generation: ")
+    print(sampled_train_df.head(10))
+    print("# Rows: " + str(len(sampled_train_df)))
 
     #sampled_train_df = train_df.sample(n=examples_sample_size, frac=None if examples_sample_size else 1, random_state=examples_random_seed)    
-  
+    
+    times= []
+
     for sample in samples:
 
         # if method == 'LCS' and column_selection == 'single':
         #     apply_examples_df = example_generator(method, column_selection, df, src, trg, example_method, example_rows, number_of_examples, examples_random_seed)
         # if method == 'LCS': #and column_selection == 'multi':
+        start_time = time.time()
         examples = example_generator(method, test_df, sampled_train_df, src_list, trg, example_method, example_rows, number_of_examples, examples_random_seed, sample)
+        end_time = time.time()
+        times.append(end_time - start_time)
         # elif method == 'ALL':
         #     apply_examples_df = example_generator(method, df, None, trg, example_method, example_rows, number_of_examples, examples_random_seed)
         
-        print("Selected Dataframe: ")
-        print(examples.head(10))
 
         value = mpping_handler(
             method, rule, trg, model, examples, get_sample_by_row_number(test_df, sample))
@@ -572,7 +590,9 @@ def run_models(config, test_df, train_df, src_list, trg, key_response_pairs, rul
         key_response_pairs.loc[key_response_pairs['id']
                                == sample, rule] = value  # detect_value_from_response(rule)
 
-    return key_response_pairs
+    example_generation_avg_time = round(sum(times) / len(samples), 3)
+
+    return key_response_pairs, example_generation_avg_time
 
 def print_dataframe_info(df):
     print("### DataFrame Information ###\n")
@@ -608,31 +628,61 @@ def print_dataframe_info(df):
 
 
 def group_sampling(df, trg, m, n, seed):
-    # Group the dataframe by the target column
     grouped = df.groupby(trg)
+    group_sizes = grouped.size()
 
-    # Get groups that have at least n rows
-    eligible_groups = [name for name, group in grouped if len(group) >= n]
+    # Find all (m', n') pairs where at least m' groups have ≥ n' rows
+    candidates = []
+    for n_candidate in range(1, n+1):  # try from 1 up to n
+        eligible_groups = group_sizes[group_sizes >= n_candidate].index.tolist()
+        m_candidate = min(m, len(eligible_groups))  # max groups available
+        if m_candidate > 0:
+            candidates.append((m_candidate, n_candidate, eligible_groups))
 
-    # Check if we have enough groups to sample from
-    if len(eligible_groups) < m:
-        m = len(eligible_groups)
-        # raise ValueError(
-        #     f"Not enough groups with at least {n} rows. Only found {len(eligible_groups)} such groups.")
+    # Pick the (m', n') that maximizes m'*n'
+    best_m, best_n, best_groups = max(candidates, key=lambda x: x[0]*x[1])
 
-    # Randomly sample m groups
-    sampled_groups = pd.Series(eligible_groups).sample(m, random_state=seed).tolist()
+    # Randomly sample best_m groups
+    sampled_groups = pd.Series(best_groups).sample(best_m, random_state=seed).tolist()
 
-    # Initialize an empty list to hold the samples
+    print(f"Selected {best_m} groups with {best_n} samples each "
+          f"→ total {best_m * best_n} samples.")
+
+    # Collect samples
     samples = []
-
-    # For each sampled group, randomly select n rows
     for group_name in sampled_groups:
-        group_sample = grouped.get_group(group_name).sample(n, random_state=seed)
+        group_sample = grouped.get_group(group_name).sample(best_n, random_state=seed)
         samples.append(group_sample)
 
-    # Concatenate all the sampled groups to form the final dataframe
     return pd.concat(samples).reset_index(drop=True)
+
+
+# def group_sampling(df, trg, m, n, seed):
+#     # Group the dataframe by the target column
+#     grouped = df.groupby(trg)
+
+#     # Get groups that have at least n rows
+#     eligible_groups = [name for name, group in grouped if len(group) >= n]
+
+#     # Check if we have enough groups to sample from
+#     if len(eligible_groups) < m:
+#         m = len(eligible_groups)
+#         # raise ValueError(
+#         #     f"Not enough groups with at least {n} rows. Only found {len(eligible_groups)} such groups.")
+
+#     # Randomly sample m groups
+#     sampled_groups = pd.Series(eligible_groups).sample(m, random_state=seed).tolist()
+
+#     # Initialize an empty list to hold the samples
+#     samples = []
+
+#     # For each sampled group, randomly select n rows
+#     for group_name in sampled_groups:
+#         group_sample = grouped.get_group(group_name).sample(n, random_state=seed)
+#         samples.append(group_sample)
+
+#     # Concatenate all the sampled groups to form the final dataframe
+#     return pd.concat(samples).reset_index(drop=True)
 
 
 def dependency_level_to_categorical(dependency_level, dataset_name):
@@ -892,7 +942,7 @@ def data_imputation(config, run_number):
         # train:
         src_list = None
         if method == 'LCS':
-            src_list = rule_generator(dataset_name, sampled_df, trg, method, p, q, number_of_rules)
+            src_list, attr_detection__runtime = rule_generator(dataset_name, sampled_df, trg, method, p, q, number_of_rules)
             if len(src_list) == 0: return None
             # assert src_list, "No dependencies found!"
 
@@ -930,9 +980,13 @@ def data_imputation(config, run_number):
 
         key_response_pairs = pd.DataFrame(columns=['id', 'key', rule])
         key_response_pairs = fill_keys(test_df, samples, trg, key_response_pairs)
-        key_response_pairs = run_models(config, test_df, train_df, src_list, trg, key_response_pairs, rule, samples, run_number)
+        key_response_pairs, example_generation_runtime = run_models(config, test_df, train_df, src_list, trg, key_response_pairs, rule, samples, run_number)
 
         res = evaluate(key_response_pairs, evaluate_methods)
 
+        t: Dict[str, float] = {"Phase-1": 0.0, "Phase-2": 0.0}
+        t["Phase-1"]= attr_detection__runtime
+        t["Phase-2"]= example_generation_runtime
 
-    return res
+
+    return res, t
