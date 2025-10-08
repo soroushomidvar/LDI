@@ -21,7 +21,7 @@ The config file is in JSON format. Below is a guide to each key:
 - `target_column`: The column that contains missing values (target attribute).
 
 ### 📊 `sampling`
-- `method`: Sampling method for attribute selection (e.g., `Group Sampling`, `Random Sampling`).
+- `method`: Sampling method for attribute selection (e.g., `Group Sampling`).
 - `number_of_samples`: How many samples to take (for `Random Sampling`).
 - `m`: Number of groups (for `Group Sampling`).
 - `n`: Number of records per group (for `Group Sampling`).
