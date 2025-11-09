@@ -28,6 +28,15 @@ LLM-based Imputation: Prompts an LLM with a few-shot context built from selected
 
 This localized reasoning allows LDI to achieve high accuracy with fewer tokens, enabling efficient and interpretable imputation even for large, heterogeneous tables.
 
+## 📊 Experimental Results
+
+Evaluated on four diverse real-world datasets: Buy, Restaurant, Zomato, and Phone.
+
+Outperforms traditional and modern baselines such as KNN, MIBOS, HoloClean, IPM, and FMW.
+
+Achieved up to 8% higher accuracy compared to state-of-the-art LLM-based methods.
+
+Reduced input size by up to 95.7%, making results easier to interpret and reproduce.
 
 ## ⚙️ How to Use the Config File
 
