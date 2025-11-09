@@ -52,6 +52,8 @@ Prompts the LLM to infer missing cities based on learned dependencies such as �
 
 Most existing imputation methods struggle to uncover dependencies hidden in textual fields, where relationships are implied through words, phrases, or patterns rather than exact matches. LDI bridges this gap by detecting such implicit, text-based dependencies—like area codes, product tags, or location hints—and using them for accurate and explainable imputations. This allows LDI to reason over real-world, noisy, and heterogeneous tables where traditional dependency-based or global LLM approaches fail.
 
+---
+
 ## ⚙️ How to Use the Config File
 
 The config file is in JSON format. Below is a guide to each key:
