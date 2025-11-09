@@ -1,6 +1,21 @@
 # LDI: Localized Data Imputation for Text-Rich Tables
 
-**LDI** is a method that uses LLMs to fill in missing values in tabular data, which improves both the **accuracy** and **explainability** of imputations by selecting only the attributes and tuples that can contribute to the prediction.
+**LDI** is a novel framework that leverages Large Language Models (LLMs) for imputing missing values in text-rich tabular data, where dependencies are implicit, complex, and scattered across long textual attributes.
+
+Unlike prior LLM-based methods that process entire tables globally, LDI performs localized reasoning by selecting a compact, contextually relevant subset of attributes and tuples for each missing value. This targeted selection significantly improves accuracy, scalability, and explainability.
+
+---
+
+🚀 Key Features
+
+**Localized Context Selection**: For each missing value, LDI identifies a minimal and informative subset of related attributes and tuples.
+
+**Explainability**: Every imputed value can be traced back to the specific rows and columns that influenced the prediction.
+
+**Scalability**: Reduces noise and computational overhead by processing smaller, relevant subsets instead of entire tables.
+
+**Model Flexibility**: Works with both hosted LLMs (e.g., GPT-4) and smaller open-source models (e.g., Llama 3.2 3B).
+
 
 ---
 
