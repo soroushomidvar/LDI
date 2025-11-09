@@ -116,9 +116,4 @@ Before running the code, make sure to install the required dependencies listed i
 ## 📚 `Citation`
 If you have used the codes in this repository, we would appreciate it if you cite the LDI paper:
 
-> @article{omidvartehrani2025ldi,
-  title={LDI: Localized Data Imputation},
-  author={Omidvartehrani, Soroush and Rafiei, Davood},
-  journal={arXiv preprint arXiv:2506.16616},
-  year={2025}
-}
+> TBA
