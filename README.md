@@ -115,7 +115,7 @@ Before running the code, make sure to install the required dependencies listed i
 
 ---
 
-## 📚 `Citation`
+## 📚 Citation
 If you have used the codes in this repository, we would appreciate it if you cite the LDI paper:
 
 > TBA
