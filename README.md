@@ -1,4 +1,4 @@
-# LDI: Localized Data Imputation
+# LDI: Localized Data Imputation for Text-Rich Tables
 
 **LDI** is a method that uses LLMs to fill in missing values in tabular data, which improves both the **accuracy** and **explainability** of imputations by selecting only the attributes and tuples that can contribute to the prediction.
 
