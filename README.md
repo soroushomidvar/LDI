@@ -4,7 +4,6 @@
 
 Unlike prior LLM-based methods that process entire tables globally, LDI performs localized reasoning by selecting a compact, contextually relevant subset of attributes and tuples for each missing value. This targeted selection significantly improves accuracy, scalability, and explainability.
 
----
 
 ## 🚀 Key Features
 
