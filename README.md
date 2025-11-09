@@ -38,6 +38,16 @@ Achieved up to 8% higher accuracy compared to state-of-the-art LLM-based methods
 
 Reduced input size by up to 95.7%, making results easier to interpret and reproduce.
 
+## ⚙️ Example
+
+For a table missing the City column:
+
+LDI detects that Phone numbers (e.g., prefixes like 212 or 702) are strongly related.
+
+Selects only the Phone attribute and the most relevant tuples.
+
+Prompts the LLM to infer missing cities based on learned dependencies such as “212 → New York” and “702 → Las Vegas.”
+
 ## ⚙️ How to Use the Config File
 
 The config file is in JSON format. Below is a guide to each key:
