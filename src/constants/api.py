@@ -1,0 +1,5 @@
+GEMINI_API_KEY = ""
+
+GPT_API_KEY = ""
+
+REPLICATE_API_KEY = ""
