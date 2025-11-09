@@ -38,7 +38,7 @@ Achieved up to 8% higher accuracy compared to state-of-the-art LLM-based methods
 
 Reduced input size by up to 95.7%, making results easier to interpret and reproduce.
 
-## ⚙️ Example
+## 🧩 Example
 
 For a table missing the City column:
 
