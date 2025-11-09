@@ -17,7 +17,18 @@ Unlike prior LLM-based methods that process entire tables globally, LDI performs
 **Model Flexibility**: Works with both hosted LLMs (e.g., GPT-4) and smaller open-source models (e.g., Llama 3.2 3B).
 
 
----
+## 🧠 Core Idea
+
+LDI decomposes imputation into three stages:
+
+Attribute Selection: Detects dependencies using a relaxed notion of (p, q)-approximate functional dependency, finding text-based patterns (e.g., area codes → cities).
+
+Tuple Selection: Finds similar and diverse examples using Longest Common Substring (LCS) similarity over selected attributes.
+
+LLM-based Imputation: Prompts an LLM with a few-shot context built from selected tuples, guiding the model to infer missing values.
+
+This localized reasoning allows LDI to achieve high accuracy with fewer tokens, enabling efficient and interpretable imputation even for large, heterogeneous tables.
+
 
 ## ⚙️ How to Use the Config File
 
