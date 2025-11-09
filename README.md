@@ -6,7 +6,7 @@ Unlike prior LLM-based methods that process entire tables globally, LDI performs
 
 ---
 
-🚀 Key Features
+## 🚀 Key Features
 
 **Localized Context Selection**: For each missing value, LDI identifies a minimal and informative subset of related attributes and tuples.
 
