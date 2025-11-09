@@ -58,7 +58,7 @@ Most existing imputation methods struggle to uncover dependencies hidden in text
 
 The config file is in JSON format. Below is a guide to each key:
 
-### 🔧 Root-level Keys
+### Root-level Keys
 - `task`: Type of task (e.g., data imputation).
 - `model`: The LLM model to use (e.g., `GPT`, `LLaMA`).
 - `na`: How to handle missing values during attribute selection.
@@ -66,35 +66,35 @@ The config file is in JSON format. Below is a guide to each key:
 - `result_path`: Where to save the final results.
 - `output_path`: Where to save logs.
 
-### 📁 `dataset`
+### `dataset`
 - `name`: Dataset name.
 - `target_column`: The column that contains missing values (target attribute).
 
-### 📊 `sampling`
+### `sampling`
 - `method`: Sampling method for attribute selection (e.g., `Group Sampling`).
 - `number_of_samples`: How many samples to take (for `Random Sampling`).
 - `m`: Number of groups (for `Group Sampling`).
 - `n`: Number of records per group (for `Group Sampling`).
 
-### 🧪 `examples`
+### `examples`
 - `method`: How to choose examples.
 - `number_of_examples`: How many examples to use.
 - `random_seed`: Set a seed for reproducibility.
 - `sample_size`: Size of the pool to sample from.
 - `rows`: Specific row indices to use instead of random selection.
 
-### 🧠 `dependency_finder`
+### `dependency_finder`
 - `method`: Method used for finding dependent attributes.
 - `number_of_rules`: Maximum number of rules to extract (set to `-1` to remove the limit).
 - `inner_threshold`: Controls the in-group condition (`q` in the paper).
 - `outer_threshold`: Controls the across-group condition (`p` in the paper).
 
-### 🔀 `dataset_partition`
+### `dataset_partition`
 - `train_ratio`: Ratio of training data.
 - `number_of_test_rows`: Number of test rows to evaluate.
 - `random_seed`: Seed for dataset shuffling.
 
-### 📈 `evaluate`
+### `evaluate`
 - `methods`: Evaluation metrics to use (e.g., `exact match`, `BLEU`, `ROUGE`).
 
 ---
