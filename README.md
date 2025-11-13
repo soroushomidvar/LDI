@@ -118,8 +118,8 @@ Make sure the datasets are properly downloaded and placed in the following direc
 <pre>
 data/
   data_imputation/
-    \<dataset name>/
-      \<dataset file>.csv
+    \<dataset-name>/
+      \<dataset-file>.csv
 </pre>
 
 4. (Optional) Update external model API key
