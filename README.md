@@ -132,7 +132,7 @@ If you are using an external model, update your API key in:
 
 Edit the `config.json` file located next to `main.py` to set your parameters. Save the file.
 
-6. Run the program:
+6. Run the program
 <pre> python main.py </pre>
 
 
