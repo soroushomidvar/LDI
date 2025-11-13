@@ -101,15 +101,35 @@ The config file is in JSON format. Below is a guide to each key:
 
 ## ▶️ Installation & Running the Code
 
-Before running the code, make sure to install the required dependencies listed in **requirements.txt** .
-1. Install required packages:
+Before running the code, please follow these steps:
 
+1. Create and activate a virtual environment
+<pre>
+python -m venv venv
+source venv/bin/activate   # On Windows use: venv\Scripts\activate
+</pre>
+
+2. Install all dependencies listed in requirements.txt:
 <pre> pip install -r requirements.txt </pre>
 
-2. Edit the `config.json` file located next to `main.py` to set your parameters. Save the file.
+3. Download datasets
+Make sure the datasets are properly downloaded and placed in the following directory structure:
+<pre>
+data/
+  data_imputation/
+    <dataset_name>/
+      <dataset_file>.csv
+</pre>
 
-3. Run the program:
+4. (Optional) Update external model API key
+If you are using an external model, update your API key in:
+<pre>src/constants/api.py</pre>
 
+
+5. Configure parameters
+Edit the `config.json` file located next to `main.py` to set your parameters. Save the file.
+
+6. Run the program:
 <pre> python main.py </pre>
 
 
