@@ -113,6 +113,7 @@ source venv/bin/activate   # On Windows use: venv\Scripts\activate
 <pre> pip install -r requirements.txt </pre>
 
 3. Download datasets
+
 Make sure the datasets are properly downloaded and placed in the following directory structure:
 <pre>
 data/
@@ -122,11 +123,13 @@ data/
 </pre>
 
 4. (Optional) Update external model API key
+
 If you are using an external model, update your API key in:
 <pre>src/constants/api.py</pre>
 
 
 5. Configure parameters
+
 Edit the `config.json` file located next to `main.py` to set your parameters. Save the file.
 
 6. Run the program:
