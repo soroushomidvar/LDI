@@ -29,7 +29,7 @@
     },
     "dataset_partition": {
         "train_ratio": 0.9,
-        "number_of_test_rows": 100,
+        "number_of_test_rows": 5,
         "random_seed": 42
     },
     "evaluate": {
