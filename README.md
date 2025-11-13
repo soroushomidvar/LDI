@@ -118,7 +118,7 @@ Make sure the datasets are properly downloaded and placed in the following direc
 <pre>
 data/
   data_imputation/
-      <code>&lt;dataset_name&gt;</code>/
+    <code>&lt;dataset_name&gt;</code>/
       <code>&lt;dataset_file&gt;</code>.csv
 </pre>
 
