@@ -1,7 +1,5 @@
 # from collections import namedtuple
 
-# # BASE_PATH = '/Users/soroush/Desktop/University/Projects/XDI/data'
-
 # DATASET_CONSTANTS = namedtuple('DATASET_CONSTANTS', 'VALUE')
 
 # BUY_DATASET_CONSTANTS = DATASET_CONSTANTS(
