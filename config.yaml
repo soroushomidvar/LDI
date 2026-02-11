@@ -1,0 +1,68 @@
+# task: Data Imputation (only supported task)
+task: Data Imputation
+
+# verbose: true | false — show detailed output (column names, stats, dataframes, etc.)
+verbose: false
+
+dataset:
+  # name: buy | restaurant | flipkart | zomato | walmart | phone | phone_2
+  name: buy
+  # target_column: column with missing values (e.g., manufacturer, city, location, brand)
+  target_column: manufacturer
+
+# model: GPT Small | GPT Large | Llama Small | Gemini
+model: GPT Small
+
+# column_length_limit: max chars per column (drop long columns); e.g. 10000
+column_length_limit: 10000
+
+# na: drop | fill — drop rows with NA, or fill with empty string
+na: drop
+
+# repeat: number of experiment runs
+repeat: 1
+
+sampling:
+  # method: Group Sampling | Random Sampling
+  method: Group Sampling
+  # number_of_samples: for Random Sampling
+  number_of_samples: 50
+  # m: number of groups (Group Sampling)
+  m: 10
+  # n: records per group (Group Sampling)
+  n: 10
+
+examples:
+  # method: diverse_similarity | similarity | random | manual
+  method: diverse_similarity
+  number_of_examples: 10
+  random_seed: 42
+  # sample_size: pool size for sampling; null = use full train
+  sample_size: null
+  # rows: specific row indices; [] = use random
+  rows: []
+
+dependency_finder:
+  # method: LCS
+  method: LCS
+  # number_of_rules: max rules; -1 = no limit
+  number_of_rules: -1
+  # inner_threshold: in-group condition (q); 0–1
+  inner_threshold: 0.9
+  # outer_threshold: across-group condition (p); 0–1
+  outer_threshold: 0.9
+
+dataset_partition:
+  train_ratio: 0.9
+  number_of_test_rows: 10
+  random_seed: 123
+
+evaluate:
+  # methods: exact_match | bleu_score | rouge_score
+  methods:
+    - exact_match
+    - bleu_score
+    - rouge_score
+
+result_path: res.xlsx
+output_path: out.txt

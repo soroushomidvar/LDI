@@ -1,0 +1,31 @@
+[project]
+name = "xdi"
+version = "0.1.0"
+description = "Localized Data Imputation for Text-Rich Tables"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "openpyxl>=3.1.0",
+    "scikit-learn>=1.3.0",
+    "nltk>=3.8.0",
+    "spacy>=3.7.0",
+    "rouge-score>=0.1.2",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "openai>=1.0.0",
+    "ollama>=0.1.0",
+    "tiktoken>=0.5.0",
+    "scipy>=1.11.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+    "pip",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
