@@ -148,6 +148,26 @@ data/
       <dataset_file>.csv
 ```
 
+> **Note:** The dataset files are tracked using **Git LFS (Large File Storage)**.
+> If you clone the repository without Git LFS installed, you may see placeholder files like:
+>
+> ```
+> version https://git-lfs.github.com/spec/v1
+> oid sha256:...
+> size ...
+> ```
+>
+> instead of the actual CSV content.
+>
+> To download the real dataset files, please install Git LFS and run:
+>
+> ```bash
+> git lfs install
+> git lfs pull
+> ```
+>
+> After that, the full CSV files will be available in the directories above.
+
 ### Configuration
 
 Edit the `config.yaml` file located in the root directory to set your parameters.
